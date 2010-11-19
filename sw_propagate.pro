@@ -14,12 +14,36 @@
 ;	2.) Plot the solar wind outflow applying a 1/r^alpha fall-off in B-field.
 ;		Allow model to run and output images to directory.
 ;	IDL>sw_propagate,'12-dec-2008',/no_alph,/plot_points
+;
+;	3.) Only use certain space craft to model the wind. Default assumes all.
+;	IDL>sw_propagate,'12-dec-2008',spacecraft=['sta','omni']
+;
 ;NOTES:
 ;	This algorithm must be run in IDL 32 bit mode due to its utilization of SPICE.
 ;
 ;HISTORY:
 ;	12-Nov-2010 - P.A.Higgins - Written
 ;
+;TODO: 	1) 	correct all properties to be in solar equatorial plane instead of space craft plane
+;		2) 	allow option for plotting points for different properties, not just B mag
+;		3) 	read br, bn and bt into model- good for spotting coronal holes
+;				bt should show very clear CME signal
+;				bperp,spiral will tell the polarity of coronal holes
+;		4) 	include properties like b rotation (clearest cme signal), beta sw, epsilon parameter (geo effective ness)
+;		5) 	include SW inclination? B inclination (for current sheet topology)
+;		6) 	AMDA property which goes negative when you cross the current sheet
+;		7) 	allow adding more space craft in situ data slices.
+;		8) 	allow option to plot 4 properties for CME detection or coronal hole detection
+;				CMEs:[bmag, brotation or angle, density? temp?, epsilon?]
+;				CHs:[btangent to spiral, density, velocity, temp?]
+;		9) 	allow option to overplot individual spirals by inputting a list of heliographic longitudes
+;		10) over plot colored arrows at the space craft to show the direction of the passing magnetic field
+;		11) use the "los" bfield angle to correct the spiral
+;				if b is along spiral, there should be no change
+;				if b is perp spiral, it should pull the spiral to be in the direction of B
+;		12) include mariner, voyager1, voyager 2, and map them to some radius range from saturn -> 2.5 or 3 AU 
+;				and look at the interface between the inner and outer space craft data.
+;		13) add the effect of the solar wind acceleration between 1 and 100 R sun (should go as r? r2? r3?) 
 ;-------------------------------------------------------------------------->
 ;Set up the paths to the in situ data files.
 function sw_paths, insitup=insitup, plotp=plotp, savep=savep, plotinterpheliop=plotinterpheliop
@@ -189,6 +213,7 @@ if n_elements(inrrange) lt 1 then rrange=[-3.5*au_km,10.*au_km] else rrange=inrr
 thetarange=thetarange+[-thetabin/2.,2.*thetabin]
 
 blob_arr=inblob
+if (where(blob_arr[*,0] le rrange[1] and blob_arr[*,0] gt rrange[0]))[0] eq -1 then return,nan
 blob_arr=blob_arr[where(blob_arr[*,0] le rrange[1] and blob_arr[*,0] gt rrange[0]),*]
 
 blank=fltarr(1,6)
@@ -278,18 +303,6 @@ return,outspiral
 end
 
 ;-------------------------------------------------------------------------->
-;Make sure that longitudes run from 0-360
-function sw_theta_shift, inarr
-
-outarr=inarr
-if (where(inarr ge 360))[0] ne -1 then outarr[where(inarr ge 360)]=outarr[where(inarr ge 360.)]-360.
-if (where(inarr lt 0))[0] ne -1 then outarr[where(inarr lt 0)]=outarr[where(inarr lt 0.)]+360.
-
-return, outarr
-
-end
-
-;-------------------------------------------------------------------------->
 
 function sw_get_data, trange, omni=omni, sta=sta, stb=stb, ace=ace, wind=wind, $
 	constants=constants_arr
@@ -367,11 +380,11 @@ end
 ;tbin	=	days between extrapolation solutions
 
 pro sw_propagate, intime, trange=intrange, tbin=intbin, no_alpha=no_alpha, full360=full360, $
-	test=test, plot_points=plot_points, $
+	test=test, plot_points=plot_points, spacecraft=spacecraft, res1tore=res1tore, $
 	interp_maps=interp_maps, save_maps=save_maps, plot_interp=plot_interp
 
 time=anytim(intime)
-if n_elements(intrange) lt 1 then trange=[time-5.*24.*3600.,time+10.*24.*3600.] else trange=time-intrange*24.*3600.
+if n_elements(intrange) lt 1 then trange=[time-5.*24.*3600.,time+10.*24.*3600.] else trange=time+intrange*24.*3600.
 if n_elements(intbin) lt 1 then tbin=12.*3600. else tbin=intbin*24.*3600.
 
 window,xs=750,ys=750
@@ -380,13 +393,13 @@ plotp=sw_paths(/plotp) ;'~/science/procedures/cme_propagation/sw_prop_movie/'
 
 ;SW Properties fall off as 1/r^alpha
 alpha_b=2.5d ;between 2 and 3
-alpha_rho=1.d
+alpha_rho=3d
 alpha_t=1.d
 if keyword_set(no_alpha) then begin & alpha_b=0d & alpha_rho=0d & alpha_t=0d & endif
 
 ;Physical Constants
 au_km=149.6d6 ;1 AU in kilometers
-vernal_equinox = -77d ; the longitude of Capella (Aries?) in degrees 
+vernal_equinox = -77d ; the longitude of Capella (Aries?) in degrees or solar ascending node?? 
 nan=0/0.
 r_sun=6.955d5
 omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes (-10 -> +10)
@@ -395,12 +408,15 @@ constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun
 
 ;Read in situ data SC=([r,theta,v,rho,temp,bmag,t],nblob)
 nspacecraft=3
-sc_arr0=sw_get_data(trange,/omni,const=constants_arr)
-sc_arr1=sw_get_data(trange,/sta,const=constants_arr)
-sc_arr2=sw_get_data(trange,/stb,const=constants_arr)
+if not keyword_set(res1tore) then begin
+	sc_arr0=sw_get_data(trange,/omni,const=constants_arr)
+	sc_arr1=sw_get_data(trange,/sta,const=constants_arr)
+	sc_arr2=sw_get_data(trange,/stb,const=constants_arr)
+	save,sc_arr0,sc_arr1,sc_arr2,file=sw_paths(/sav)+'sw_run_data_load_restore.sav'
+endif else restore,sw_paths(/sav)+'sw_run_data_load_restore.sav'
 
-ntime=round((trange[1]-trange[0])/tbin)
-time_arr=findgen(ntime)*tbin+trange[0]
+if n_elements(trange) eq 1 then ntime=1. else ntime=round((trange[1]-trange[0])/tbin)
+if ntime eq 1. then time_arr=time else time_arr=findgen(ntime)*tbin+trange[0]
 
 ;Create SW propagation SW(r,theta,v,rho,temp,bmag,t_sc) array sw=[nblob,nparam=7,ntime]
 nblob0=n_elements(sc_arr0[0,*])
@@ -419,20 +435,31 @@ stahglon=(GET_STEREO_LONLAT( anytim(time_arr[ntime/2.],/vms), 'A', system = 'HEE
 
 earthsta=stahglon;abs(sc_arr0[1,wbestearth]-sc_arr1[1,wbeststa])/2.
 earthstb=stbhglon;abs(sc_arr0[1,wbestearth]-sc_arr2[1,wbeststb])/2.
-if keyword_set(full360) then begin
-	thetarange=ceil([[0.,360.], $
-		[0,360.], $
-		[0,360.]])
-endif else begin
-	thetarange=ceil([[earthstb/2., earthsta/2.], $
-		[-earthsta/2.,180.-earthsta/2.], $
-		[-1.*(180.+earthstb/2.),-1.*earthstb/2.]])
-endelse
 
-spiral_arrays=transpose([0.,0.,0.,0.,0.,0.])
+;Calculate ranges to model over for each space craft
+thetarange=ceil([[earthstb/2.-10., earthsta/2.+10.], $
+	[-earthsta/2.,180.-earthsta+10.], $
+	[-180.-earthstb-10.,-1.*earthstb/2.]])
+if keyword_set(full360) then thetarange=ceil([[0.,360.], [0,360.], [0,360.]])
+if n_elements(spacecraft) gt 0 then begin
+	if n_elements(spacecraft) eq 2 then begin
+		if strjoin(strlowcase(spacecraft)) eq ['stastb'] or strjoin(strlowcase(spacecraft)) eq ['stbsta'] then $
+			thetarange=ceil([[0.,0.], [-earthsta,180.-earthsta], [-180.-earthstb,-1.*earthstb]])
+		if strjoin(strlowcase(spacecraft)) eq ['staomni'] or strjoin(strlowcase(spacecraft)) eq ['omnista'] then $
+			thetarange=ceil([[-180-earthsta/2., earthsta/2.], [-earthsta/2.,180.-earthsta], [0.,0.]])
+		if strjoin(strlowcase(spacecraft)) eq ['stbomni'] or strjoin(strlowcase(spacecraft)) eq ['omnistb'] then $
+			thetarange=ceil([[earthstb/2.-10., 180+earthsta/2.], [0,0], [-180.-earthstb,-1.*earthstb/2.]])
+	endif
+	if n_elements(spacecraft) eq 1 then begin
+		if strlowcase(spacecraft) eq 'omni' then thetarange=ceil([[-180,180],[0,0],[0,0]])
+		if strlowcase(spacecraft) eq 'sta' then thetarange=ceil([[0,0],[-180,180],[0,0]])
+		if strlowcase(spacecraft) eq 'stb' then thetarange=ceil([[0,0],[0,0],[-180,180]])
+	endif
+endif
 
 ;Run through each propagation time within TIMERANGE using TBIN
 for i=0l,ntime-1l do begin
+spiral_arrays=transpose([0.,0.,0.,0.,0.,0.])
 ;Run through each spacecraft
 	for j=0,nspacecraft-1 do begin
 		ex=execute('sw=sw'+strtrim(j,2)+' & nblob=nblob'+strtrim(j,2)+' & sc_arr=sc_arr'+strtrim(j,2))
@@ -481,7 +508,7 @@ sw=double(sw)
 		
 ;Calculate spirals for each blob
 		spirals=sw_spiral(sw[*,*,i],const=constants_arr, theta_range=thetarange[*,j])
-		spiral_arrays=[spiral_arrays,spirals]
+		if n_elements(spirals) gt 1. then spiral_arrays=[spiral_arrays,spirals]
 		
 ;Get rid of meaningless data  (R < R_sun)
 		wbad=where(sw[*,0,i] lt r_sun)
@@ -489,12 +516,10 @@ sw=double(sw)
 		
 if not keyword_set(plot_points) then goto,skip_plot_points
 
-;Plot the Sun
+;Plot the axes
 		if j eq 0 then begin
 			setcolors,/sys,/sil,/qui
 			plot,/polar,sw[*,0,i],sw[*,1,i]*!dtor,ps=3,xr=[au_km,-au_km]*1.2,yr=[au_km,-au_km]*1.2,/iso,title=anytim(thistime,/vms)
-			plotsym,0,4,/fill
-			oplot,/polar,[0,0]*au_km,[0,0],ps=8,color=!orange
 		endif else oplot,/polar,sw[*,0,i],sw[*,1,i]*!dtor,ps=3
 		
 		;Set up color dot plots
@@ -515,7 +540,6 @@ if not keyword_set(plot_points) then goto,skip_plot_points
 			
 ;Plot color bar
 		if j eq 2 then if keyword_set(no_alpha) then color_table, [0.,10.],/right,/top,title='|B| [nT]' else color_table, [0,3],/right,/top,title='LOG |B| [nT]'
-
 		
 ;Save the Stereo A position
 		if j eq 1 then wbest1=where(min(abs(sc_arr[6,*]-thistime)) eq abs(sc_arr[6,*]-thistime))
@@ -523,37 +547,52 @@ if not keyword_set(plot_points) then goto,skip_plot_points
 ;Plot space craft
 		if j eq 2 then begin
 			setcolors,/sys,/quie,/sile
+			plot,/polar,sw[*,0,i],sw[*,1,i]*!dtor,/nodata,/noerase,xr=[au_km,-au_km]*1.2,yr=[au_km,-au_km]*1.2,/iso
+;Plot the Sun
+			plotsym,0,1,/fill
+			oplot,/polar,[0,0]*au_km,[0,0],ps=8,color=!orange
+			
 ;Plot Stereo B
-			;stb_pos=GET_STEREO_LONLAT( anytim(thistime,/vms), 'B', system = 'HCI', /degrees )
-			wbest2=where(min(abs(sc_arr[6,*]-thistime)) eq abs(sc_arr[6,*]-thistime))
-			plotsym,0,3,/fill
-			;oplot,/polar,[stb_pos[0],stb_pos[0]],[stb_pos[1],stb_pos[1]],ps=8,color=!green
-			oplot,/polar,[sc_arr[0,wbest2],sc_arr[0,wbest2]],[sc_arr[1,wbest2],sc_arr[1,wbest2]]*!dtor,ps=8,color=!green
-			plotsym,0,2,/fill & oplot,/polar,[sc_arr[0,wbest2],sc_arr[0,wbest2]],[sc_arr[1,wbest2],sc_arr[1,wbest2]]*!dtor,ps=8,color=!black
+			stb_pos=GET_STEREO_LONLAT( anytim(thistime,/vms), 'B', system = 'HCI', /degrees )
+			;wbest2=where(min(abs(sc_arr[6,*]-thistime)) eq abs(sc_arr[6,*]-thistime))
+			plotsym,0,1,/fill
+			oplot,/polar,[stb_pos[0],stb_pos[0]],[stb_pos[1],stb_pos[1]]*!dtor,ps=8,color=!white
+			;oplot,/polar,[sc_arr[0,wbest2],sc_arr[0,wbest2]],[sc_arr[1,wbest2],sc_arr[1,wbest2]]*!dtor,ps=8,color=!green
+			;plotsym,0,2,/fill & oplot,/polar,[sc_arr[0,wbest2],sc_arr[0,wbest2]],[sc_arr[1,wbest2],sc_arr[1,wbest2]]*!dtor,ps=8,color=!black
 ;Plot Stereo A
-			;sta_pos=GET_STEREO_LONLAT( anytim(thistime,/vms), 'A', system = 'HCI', /degrees )
+			sta_pos=GET_STEREO_LONLAT( anytim(thistime,/vms), 'A', system = 'HCI', /degrees )
 			;wbesta=where(min(abs(sc_arr[6,*]-thistime)) eq abs(sc_arr[6,*]-thistime))
-			plotsym,0,3,/fill
-			;oplot,/polar,[sta_pos[0],sta_pos[0]],[sta_pos[1],sta_pos[1]],ps=8,color=!red
-			oplot,/polar,[sc_arr[0,wbest1],sc_arr[0,wbest1]],[sc_arr[1,wbest1],sc_arr[1,wbest1]]*!dtor,ps=8,color=!red
-			plotsym,0,2,/fill & oplot,/polar,[sc_arr[0,wbest1],sc_arr[0,wbest1]],[sc_arr[1,wbest1],sc_arr[1,wbest1]]*!dtor,ps=8,color=!black
+			plotsym,0,1,/fill
+			oplot,/polar,[sta_pos[0],sta_pos[0]],[sta_pos[1],sta_pos[1]]*!dtor,ps=8,color=!white
+			;oplot,/polar,[sc_arr[0,wbest1],sc_arr[0,wbest1]],[sc_arr[1,wbest1],sc_arr[1,wbest1]]*!dtor,ps=8,color=!red
+			;plotsym,0,2,/fill & oplot,/polar,[sc_arr[0,wbest1],sc_arr[0,wbest1]],[sc_arr[1,wbest1],sc_arr[1,wbest1]]*!dtor,ps=8,color=!black
 ;Plot Earth
-			plotsym,0,3,/fill
-			oplot,/polar,[earth_rad[0],earth_rad[0]]*au_km,[this_earthlon,this_earthlon]*!dtor,ps=8,color=!blue
-			plotsym,0,2,/fill & oplot,/polar,[earth_rad[0],earth_rad[0]]*au_km,[this_earthlon,this_earthlon]*!dtor,ps=8,color=!black
+			polrec, earth_rad[0]*au_km, this_earthlon, earthpos_x, earthpos_y, /degrees
+			plotsym,0,1,/fill
+			oplot,[earthpos_x,earthpos_x],[earthpos_y,earthpos_y],ps=8,color=!white
+			;oplot,/polar,[earth_rad[0],earth_rad[0]]*au_km,[this_earthlon,this_earthlon]*!dtor,ps=8,color=!yellow
+			;plotsym,0,2,/fill & oplot,/polar,[earth_rad[0],earth_rad[0]]*au_km,[this_earthlon,this_earthlon]*!dtor,ps=8,color=!black
 		endif
-		
+
+		oplot,/polar,sw[*,0,i],sw[*,1,i]*!dtor,ps=3		
+
 skip_plot_points:
 
 	endfor	
 
-	if keyword_set(plot_points) then window_capture,file=plotp+'frame_'+string(i,form='(I04)'),/png
+	if not keyword_set(test) then if keyword_set(plot_points) then window_capture,file=plotp+'frame_'+time2file(anytim(thistime,/vms)),/png
 
+	sw_arrays=spiral_arrays[1:*,*]
+	sw_arrays[*,1]=sw_theta_shift(sw_arrays[*,1])
+;Interpolate points to create solution images
 	if keyword_set(interp_maps) then begin
-		sw_arrays=spiral_arrays[1:*,*]
-		sw_arrays[*,1]=sw_theta_shift(sw_arrays[*,1])
+		;sw_arrays=spiral_arrays[1:*,*]
+		;sw_arrays[*,1]=sw_theta_shift(sw_arrays[*,1])
 		mapstack=sw_interp(sw_arrays,thistime,/heliocentric,plot_interp=plot_interp,save_maps=save_maps,constants=constants_arr) ;,/cylindrical
 	endif
+
+	if not keyword_set(test) then save,sw_arrays,file=sw_paths(/sav)+'sw_properties_points_'+time2file(anytim(thistime,/vms))+'.sav'
+
 
 	if keyword_set(test) then begin
 		blah=''
