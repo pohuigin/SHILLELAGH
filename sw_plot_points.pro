@@ -22,7 +22,7 @@ omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes 
 constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
 
 ;list save files and find nearest to TIME
-savp=sw_paths(/savp)
+savp=sw_paths(/savep)
 plotp=sw_paths(/plotinterpheliop)
 if n_elements(array) gt 1 then spirals=array else begin
 	swff=file_search(savp+'sw_prop*.sav')
@@ -45,7 +45,8 @@ earth_lon = earth_lon + vernal_equinox
 earth_lon=sw_theta_shift(earth_lon)
 this_earthlon=earth_lon[0]
 
-;window,xs=700,ys=700
+wxs=700 & wys=700
+window,xs=wxs,ys=wys
 
 ;Plot the axes
 setcolors,/sys,/sil,/qui
@@ -81,7 +82,14 @@ endcase
 	
 ;Plot color bar
 ;if j eq 2 then if keyword_set(no_alpha) then color_table, [0.,10.],/right,/top,title='|B| [nT]' else 
-if n_elements(cbarpos) lt 1 then cbarpos=[.6,.85,.95,.9]
+if n_elements(cbarpos) lt 1 then begin
+	cbarpos0=!p.clip/float([wxs,wys,wxs,wys]) & cbarpos=cbarpos0
+	cbarpos[0]=cbarpos0[2]-(cbarpos0[2]-cbarpos0[0])*.5
+	cbarpos[2]=cbarpos0[2];-(cbarpos0[2]-cbarpos0[0])*.05;[.6,.85,.95,.9]
+	cbarpos[3]=cbarpos0[3];-(cbarpos0[3]-cbarpos0[1])*.05
+	cbarpos[1]=cbarpos0[3]-(cbarpos0[3]-cbarpos0[1])*.05
+endif
+stop
 case propnum of 
 	2: color_table, velrange,cbarpos[[0,2]],cbarpos[[1,3]],title='Velocity [Km/s]',/shadow
 	3: color_table, densrange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG |p| [cm^-3]',/shadow
