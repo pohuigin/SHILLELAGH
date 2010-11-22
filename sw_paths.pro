@@ -1,6 +1,6 @@
 ;-------------------------------------------------------------------------->
 ;Set up the paths to the in situ data files.
-function sw_paths, insitup=insitup, plotp=plotp, savep=savep, plotinterpheliop=plotinterpheliop, 
+function sw_paths, insitup=insitup, plotp=plotp, savep=savep, plotinterpheliop=plotinterpheliop, $
 	cmeplotp=cmeplotp, cmeinputdatap=cmeinputdatap, $
 	rootp=rootp, verbose=verbose
 
