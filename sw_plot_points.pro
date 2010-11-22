@@ -22,8 +22,8 @@ omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes 
 constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
 
 ;list save files and find nearest to TIME
-savp='~/science/data/cme_propagation/sw_prop_save/'
-plotp='~/science/data/cme_propagation/heliosphere_property_plots/'
+savp=sw_paths(/savp)
+plotp=sw_paths(/plotinterpheliop)
 if n_elements(array) gt 1 then spirals=array else begin
 	swff=file_search(savp+'sw_prop*.sav')
 	timff=anytim(file2time(swff))
