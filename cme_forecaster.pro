@@ -55,12 +55,13 @@ pro cme_forecaster, cmetim, cmelon, cmevel, cmewidth, $ ;CME parameters
 	out_struct=out_struct, cmetitle=cmetitle
 	
 	if n_elements(cmetitle) lt 1 then cmetitle=''
+	if anytim(cmetim) lt anytim(1-jan-2007) then dostereo=0. else dostereo=1
 
-	if not keyword_set(plot_path) then plotp='~/science/data/cme_propagation/plots/' else plotp=plot_path
-	if not keyword_set(orbit_path) then orbitp='~/science/data/cme_propagation/orbits/' else orbitp=orbit_path
-	modelp='~/science/data/cme_propagation/sw_prop_save/'; else orbitp=orbit_path
-	insitup='~/science/data/cme_propagation/sw_prop_insitu/'
-	rootp='~/science/data/cme_propagation/'
+	if not keyword_set(plot_path) then plotp=sw_paths(/cmeplot) else plotp=plot_path
+	if not keyword_set(orbit_path) then orbitp=sw_paths(/cmeinputdata) else orbitp=orbit_path
+	modelp=sw_paths(/sav); else orbitp=orbit_path
+	insitup=sw_paths(/insitu)
+	rootp=sw_paths(/root);'~/science/data/cme_propagation/'
 	
 	if n_elements(intrange) lt 1 then trange=[-2./12.,7.] else trange=intrange
 	if n_elements(intbin) lt 1 then tbin=1./12. else tbin=intbin
