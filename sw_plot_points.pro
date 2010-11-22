@@ -1,9 +1,9 @@
 ;EXAMPLE: IDL> sw_plot_points,'23-nov-2008',/vel,foot=[-20,30],chvel=550.,/save
 
 pro sw_plot_points, time, array, velocityplot=velocityplot, densityplot=densityplot, $
-	temperatureplot=temperatureplot, magneticfieldplot=magneticfieldplot, $
+	temperatureplot=temperatureplot, magneticfieldplot=magneticfieldplot, planets=planets, $
 	footpoints=footpoints, chvelocity=inchvelocity, save_plot=save_plot, $
-	title_string=title_string, cbarpos=cbarpos, pmulti=pmulti;,multiplot=multiplot
+	title_string=title_string, cbarpos=cbarpos, pmulti=pmulti, no_stereo=no_stereo;,multiplot=multiplot
 
 thistime=anytim(time)
 
@@ -22,10 +22,10 @@ omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes 
 constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
 
 ;list save files and find nearest to TIME
-savp='~/science/procedures/cme_propagation/sw_prop_save/'
-plotp='~/science/procedures/cme_propagation/heliosphere_property_plots/'
+savp='~/science/data/cme_propagation/sw_prop_save/'
+plotp='~/science/data/cme_propagation/heliosphere_property_plots/'
 if n_elements(array) gt 1 then spirals=array else begin
-	swff=file_search(savp+'*.sav')
+	swff=file_search(savp+'sw_prop*.sav')
 	timff=anytim(file2time(swff))
 	wbest=where(abs(timff-thistime) eq min(abs(timff-thistime)))
 	thistime=timff[wbest]
@@ -50,7 +50,7 @@ this_earthlon=earth_lon[0]
 ;Plot the axes
 setcolors,/sys,/sil,/qui
 if n_elements(pmulti) gt 0 then !p.multi=pmulti
-plot,/polar,spirals[*,0],spirals[*,1]*!dtor,ps=3,xr=[au_km,-au_km]*1.2,yr=[au_km,-au_km]*1.2,/iso,title=strmid(anytim(thistime,/vms),0,15)+' '+title_string,/nodata
+plot,/polar,spirals[*,0],spirals[*,1]*!dtor,ps=3,xr=[2.*au_km,-2.*au_km]*1.2,yr=[2.*au_km,-2.*au_km]*1.2,/iso,title=strmid(anytim(thistime,/vms),0,15)+' '+title_string,/nodata,chars=1.4
 
 ;Set up color dot plots
 loadct,5,/silent
@@ -58,8 +58,9 @@ loadct,5,/silent
 plotsym,0,1,/fill
 if keyword_set(magneticfieldplot) then begin & brange=[0.,3.] & propnum=5 & endif; then brange=[0.,15.]
 if keyword_set(velocityplot) then begin & velrange=[100.,700.] & propnum=2 & endif;[100.,900.]
-if keyword_set(densityplot) then begin & densrange=[0.,3] & propnum=3 & endif;[0.,15.]
+if keyword_set(densityplot) then begin & densrange=[0.,5.] & propnum=3 & endif;[0.,15.]
 if keyword_set(temperatureplot) then begin & temprange=[3,8] & propnum=4 & endif;[1d6,20d6]
+if n_elements(propnum) eq 0 then begin & brange=[0.,3.] & propnum=5 & endif
 
 ;Plot spiral extrapolation
 ;oplot,[spirals[*,0],spirals[*,0]], [spirals[*,1],spirals[*,1]]*!dtor,ps=3
@@ -82,14 +83,14 @@ endcase
 ;if j eq 2 then if keyword_set(no_alpha) then color_table, [0.,10.],/right,/top,title='|B| [nT]' else 
 if n_elements(cbarpos) lt 1 then cbarpos=[.6,.85,.95,.9]
 case propnum of 
-	2: color_table, velrange,cbarpos[[0,2]],cbarpos[[1,3]],title='Velocity [Km/s]'
-	3: color_table, densrange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG |p| [cm^-3]'
-	4: color_table, temprange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG |T| [K]'
-	5: color_table, brange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG |B| [nT]'
+	2: color_table, velrange,cbarpos[[0,2]],cbarpos[[1,3]],title='Velocity [Km/s]',/shadow
+	3: color_table, densrange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG |p| [cm^-3]',/shadow
+	4: color_table, temprange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG |T| [K]',/shadow
+	5: color_table, brange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG |B| [nT]',/shadow
 endcase
 
 if n_elements(pmulti) gt 0 then !p.multi=pmulti
-plot,/polar,spirals[*,0],spirals[*,1]*!dtor,/nodata,/noerase,xr=[au_km,-au_km]*1.2,yr=[au_km,-au_km]*1.2,/iso
+plot,/polar,spirals[*,0],spirals[*,1]*!dtor,/nodata,/noerase,xr=[2.*au_km,-2.*au_km]*1.2,yr=[2.*au_km,-2.*au_km]*1.2,/iso,chars=1.4
 
 ;Save the Stereo A position
 ;		if j eq 1 then wbest1=where(min(abs(sc_arr[6,*]-thistime)) eq abs(sc_arr[6,*]-thistime))
@@ -104,6 +105,7 @@ oplot,/polar,[0,0]*au_km,[0,0],ps=8,color=0;!black
 plotsym,0,1,/fill
 oplot,/polar,[0,0]*au_km,[0,0],ps=8,color=255
 
+if keyword_set(no_stereo) then goto,skip_stereo
 ;Plot Stereo B
 stb_pos=GET_STEREO_LONLAT( anytim(thistime,/vms), 'B', system = 'HCI', /degrees )
 ;wbest2=where(min(abs(sc_arr[6,*]-thistime)) eq abs(sc_arr[6,*]-thistime))
@@ -124,6 +126,8 @@ oplot,/polar,[sta_pos[0],sta_pos[0]],[sta_pos[1],sta_pos[1]]*!dtor,ps=8,color=!w
 oplot,/polar,[0,sta_pos[0]],[0,sta_pos[1]]*!dtor,lines=1,color=!white
 ;oplot,/polar,[sc_arr[0,wbest1],sc_arr[0,wbest1]],[sc_arr[1,wbest1],sc_arr[1,wbest1]]*!dtor,ps=8,color=!red
 ;plotsym,0,2,/fill & oplot,/polar,[sc_arr[0,wbest1],sc_arr[0,wbest1]],[sc_arr[1,wbest1],sc_arr[1,wbest1]]*!dtor,ps=8,color=!black
+skip_stereo:
+
 ;Plot Earth
 polrec, earth_rad[0]*au_km, this_earthlon, earthpos_x, earthpos_y, /degrees
 plotsym,0,1.5,/fill
@@ -133,6 +137,23 @@ oplot,[earthpos_x,earthpos_x],[earthpos_y,earthpos_y],ps=8,color=!white
 oplot,[0,earthpos_x],[0,earthpos_y],lines=1,color=!white
 ;oplot,/polar,[earth_rad[0],earth_rad[0]]*au_km,[this_earthlon,this_earthlon]*!dtor,ps=8,color=!yellow
 ;plotsym,0,2,/fill & oplot,/polar,[earth_rad[0],earth_rad[0]]*au_km,[this_earthlon,this_earthlon]*!dtor,ps=8,color=!black
+
+;Plot Mars
+if keyword_set(planets) then begin
+	jd_struct = anytim2jd(anytim(thistime,/vms))
+	jd = jd_struct.int + jd_struct.frac
+	helio, jd, [1,2,4,5,6], planet_rad, planet_lon, planet_lat
+	planet_lon=planet_lon + vernal_equinox
+	polrec, planet_rad*au_km, planet_lon, planet_x,planet_y, /deg
+	setcolors,/sys,/sile,/quie
+	planetcolors=[!orange,!magenta,!red,!purple,!yellow]
+	for i=0,n_elements(planet_rad)-1 do begin
+		plotsym,0,1.5,/fill
+		oplot,[planet_x[i],planet_x[i]],[planet_y[i],planet_y[i]],color=0,ps=8
+		plotsym,0,1.,/fill
+		oplot,[planet_x[i],planet_x[i]],[planet_y[i],planet_y[i]],color=planetcolors[i],ps=8
+	endfor
+endif
 
 ;oplot,/polar,sw[*,0,i],sw[*,1,i]*!dtor,ps=3		
 

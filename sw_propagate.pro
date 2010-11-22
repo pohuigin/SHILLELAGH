@@ -45,21 +45,6 @@
 ;				and look at the interface between the inner and outer space craft data.
 ;		13) add the effect of the solar wind acceleration between 1 and 100 R sun (should go as r? r2? r3?) 
 ;-------------------------------------------------------------------------->
-;Set up the paths to the in situ data files.
-function sw_paths, insitup=insitup, plotp=plotp, savep=savep, plotinterpheliop=plotinterpheliop
-
-result=''
-
-if keyword_set(insitup) then result='~/science/procedures/cme_propagation/sw_prop_insitu/'
-if keyword_set(plotp) then result='~/science/procedures/cme_propagation/sw_prop_plots/'
-if keyword_set(savep) then result='~/science/procedures/cme_propagation/sw_prop_save/'
-if keyword_set(plotinterpheliop) then result='~/science/procedures/cme_propagation/sw_prop_interp_plots/'
-
-return, result
-
-end
-
-;-------------------------------------------------------------------------->
 ;Interpolate the data points to a grid. Choose between Cylindrical and Heliocentric
 ;Returns a stack of maps
 ;RBIN= in AU
@@ -276,7 +261,8 @@ for i=0l,nblob-1l do begin
 ;Temperature
 		thisspiral[*,4]=thisspiral[*,4]*(rbloblt0/thisspiral[*,0])^alpha_t
 ;Density
-		thisspiral[*,3]=thisspiral[*,3]*(rbloblt0/thisspiral[*,0])^alpha_rho
+
+		thisspiral[*,3]=calc_helio_props(thisspiral[*,0], rbloblt0, thisspiral[*,3], /density, constants=constants_arr);thisspiral[*,3]*(rbloblt0/thisspiral[*,0])^alpha_rho
 		
 	endif else begin
 ;B Field
@@ -284,7 +270,7 @@ for i=0l,nblob-1l do begin
 ;Temperature
 		thisspiral[*,4]=thisspiral[*,4]*(thisblob[0]/thisspiral[*,0])^alpha_t
 ;Density
-		thisspiral[*,3]=thisspiral[*,3]*(thisblob[0]/thisspiral[*,0])^alpha_rho
+		thisspiral[*,3]=calc_helio_props(thisspiral[*,0], thisblob[0], thisspiral[*,3], /density, constants=constants_arr);thisspiral[*,3]*(thisblob[0]/thisspiral[*,0])^alpha_rho
 	endelse
 
 	;Filter spiral points with R lt 0
@@ -303,76 +289,6 @@ return,outspiral
 end
 
 ;-------------------------------------------------------------------------->
-
-function sw_get_data, trange, omni=omni, sta=sta, stb=stb, ace=ace, wind=wind, $
-	constants=constants_arr
-
-orbitp=sw_paths(/insitu)
-;constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
-alpha_b=constants_arr[0]
-alpha_rho=constants_arr[1]
-alpha_t=constants_arr[2]
-au_km=constants_arr[3]
-vernal_equinox=constants_arr[4]
-nan=constants_arr[5]
-r_sun=constants_arr[6]
-omegasun=constants_arr[7]
-
-if keyword_set(omni) then begin
-	readcol,orbitp+'omni_'+strmid(time2file(trange[0],/date),0,4)+'.txt',omn_dd,omn_tt,omn_hglat,omn_hglon,omn_br,omn_bt,omn_bn,omn_bmag,omn_vel,omn_elev,omn_azim,omn_rho,omn_temp,form='A,A,F,F,F,F,F,F,F,F,F,F,F',delim=' '
-	omn_tim=anytim(strmid(omn_dd,6,4)+'-'+strmid(omn_dd,3,2)+'-'+strmid(omn_dd,0,2)+'T'+omn_tt)
-	omn_hglon=sw_theta_shift(omn_hglon)
-	sc_vel_arr=omn_vel
-	sc_tim_arr=omn_tim
-	sc_r_arr=fltarr(n_elements(sc_tim_arr))+au_km
-	sc_hgtheta_arr=omn_hglon ;need to convert to HAE or w/e.
-	sc_bmag=omn_bmag;omn_br;(omn_br^2.+omn_bt^2.+omn_bn^2.)^.5
-;todo: radial field
-	sc_rho=omn_rho
-	sc_temp=omn_temp
-endif
-
-if keyword_set(sta) then begin
-	readcol,orbitp+'sta_'+strmid(time2file(trange[0],/date),0,4)+'.txt',sta_dd,sta_tt,sta_r,sta_hglat,sta_hglon,sta_br,sta_bt,sta_bn,sta_b,sta_v,sta_sw_lat,sta_sw_lon,sta_rho,sta_t,form='A,A,F,F,F,F,F,F,F,F,F,F,F,F',delim=' '
-	sc_tim_arr=anytim(strmid(sta_dd,6,4)+'-'+strmid(sta_dd,3,2)+'-'+strmid(sta_dd,0,2)+'T'+sta_tt)
-	sc_hgtheta_arr=sw_theta_shift(sta_hglon)
-	sc_vel_arr=sta_v
-	sc_r_arr=sta_r*au_km
-	sc_bmag=sta_b;sta_br
-	sc_rho=sta_rho
-	sc_temp=sta_t
-endif
-
-if keyword_set(stb) then begin
-	readcol,orbitp+'stb_'+strmid(time2file(trange[0],/date),0,4)+'.txt',stb_dd,stb_tt,stb_r,stb_hglat,stb_hglon,stb_br,stb_bt,stb_bn,stb_b,stb_v,stb_sw_lat,stb_sw_lon,stb_rho,stb_t,form='A,A,F,F,F,F,F,F,F,F,F,F,F,F',delim=' '
-	sc_tim_arr=anytim(strmid(stb_dd,6,4)+'-'+strmid(stb_dd,3,2)+'-'+strmid(stb_dd,0,2)+'T'+stb_tt)
-	sc_hgtheta_arr=sw_theta_shift(stb_hglon)
-	sc_vel_arr=stb_v
-	sc_r_arr=stb_r*au_km
-	sc_bmag=stb_b;stb_br
-	sc_rho=stb_rho
-	sc_temp=stb_t
-endif
-
-;make an array of S=([r,theta,v,rho,temp,bmag,t],nblob)
-sc_arr=fltarr(7,n_elements(sc_vel_arr))
-sc_arr[0,*]=sc_r_arr
-sc_arr[1,*]=sc_hgtheta_arr
-sc_arr[2,*]=sc_vel_arr
-sc_arr[3,*]=sc_rho
-sc_arr[4,*]=sc_temp
-sc_arr[5,*]=sc_bmag
-sc_arr[6,*]=sc_tim_arr
-
-;Check for bad data points
-if (where(sc_arr[3,*] eq -1.*10^31.))[0] ne -1 then sc_arr[*,where(sc_arr[3,*] eq -1.*10^31.)]=nan
-sc_arr=sc_arr[*,where(finite(sc_arr[3,*]) eq 1)]
-
-return,sc_arr
-
-end
-
-;-------------------------------------------------------------------------->
 ;parker model solar wind speed vs. r from sun=> r-r_o = (v_sw/omega_sun)*(theta-theta_o)
 ;												v_sw=omega_sun*(r-r_o)/(theta-theta_o)
 ;intime = 	'DD-Mon-YYYY' to propagate to
@@ -387,13 +303,15 @@ time=anytim(intime)
 if n_elements(intrange) lt 1 then trange=[time-5.*24.*3600.,time+10.*24.*3600.] else trange=time+intrange*24.*3600.
 if n_elements(intbin) lt 1 then tbin=12.*3600. else tbin=intbin*24.*3600.
 
-window,xs=750,ys=750
+if trange[0] ge anytim('1-jan-2007') then dostereo=1 else dostereo=0 
+
+if keyword_set(plot_points) then window,xs=750,ys=750
 
 plotp=sw_paths(/plotp) ;'~/science/procedures/cme_propagation/sw_prop_movie/'
 
 ;SW Properties fall off as 1/r^alpha
 alpha_b=2.5d ;between 2 and 3
-alpha_rho=3d
+alpha_rho=4.d ;!!!NOT USED: switched to using empirical model in Chen 1996 (Eqn. 17.)
 alpha_t=1.d
 if keyword_set(no_alpha) then begin & alpha_b=0d & alpha_rho=0d & alpha_t=0d & endif
 
@@ -401,17 +319,19 @@ if keyword_set(no_alpha) then begin & alpha_b=0d & alpha_rho=0d & alpha_t=0d & e
 au_km=149.6d6 ;1 AU in kilometers
 vernal_equinox = -77d ; the longitude of Capella (Aries?) in degrees or solar ascending node?? 
 nan=0/0.
-r_sun=6.955d5
+r_sun=6.955d5 ;km
 omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes (-10 -> +10)
 
 constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
 
 ;Read in situ data SC=([r,theta,v,rho,temp,bmag,t],nblob)
-nspacecraft=3
+if dostereo then nspacecraft=3 else nspacecraft=1
 if not keyword_set(res1tore) then begin
 	sc_arr0=sw_get_data(trange,/omni,const=constants_arr)
-	sc_arr1=sw_get_data(trange,/sta,const=constants_arr)
-	sc_arr2=sw_get_data(trange,/stb,const=constants_arr)
+	if dostereo then begin 
+		sc_arr1=sw_get_data(trange,/sta,const=constants_arr)
+		sc_arr2=sw_get_data(trange,/stb,const=constants_arr)
+	endif
 	save,sc_arr0,sc_arr1,sc_arr2,file=sw_paths(/sav)+'sw_run_data_load_restore.sav'
 endif else restore,sw_paths(/sav)+'sw_run_data_load_restore.sav'
 
@@ -421,20 +341,26 @@ if ntime eq 1. then time_arr=time else time_arr=findgen(ntime)*tbin+trange[0]
 ;Create SW propagation SW(r,theta,v,rho,temp,bmag,t_sc) array sw=[nblob,nparam=7,ntime]
 nblob0=n_elements(sc_arr0[0,*])
 sw0=fltarr(nblob0,7,ntime)
-nblob1=n_elements(sc_arr1[0,*])
-sw1=fltarr(nblob1,7,ntime)
-nblob2=n_elements(sc_arr2[0,*])
-sw2=fltarr(nblob2,7,ntime)
+if dostereo then begin
+	nblob1=n_elements(sc_arr1[0,*])
+	sw1=fltarr(nblob1,7,ntime)
+	nblob2=n_elements(sc_arr2[0,*])
+	sw2=fltarr(nblob2,7,ntime)
+endif
 
 ;Find range to solve spiral for each space craft: 1/2*Difference between earth and spacecraft + 90 degrees
 wbestearth=(where(abs(time_arr[ntime/2.]-sc_arr0[6,*]) eq min(abs(time_arr[ntime/2.]-sc_arr0[6,*]))))[0]
 ;wbeststa=(where(abs(time_arr[ntime/2.]-sc_arr1[6,*]) eq min(abs(time_arr[ntime/2.]-sc_arr1[6,*]))))[0]
 ;wbeststb=(where(abs(time_arr[ntime/2.]-sc_arr2[6,*]) eq min(abs(time_arr[ntime/2.]-sc_arr2[6,*]))))[0]
-stbhglon=(GET_STEREO_LONLAT( anytim(time_arr[ntime/2.],/vms), 'B', system = 'HEE', /degrees ))[1]
-stahglon=(GET_STEREO_LONLAT( anytim(time_arr[ntime/2.],/vms), 'A', system = 'HEE', /degrees ))[1]
-
-earthsta=stahglon;abs(sc_arr0[1,wbestearth]-sc_arr1[1,wbeststa])/2.
-earthstb=stbhglon;abs(sc_arr0[1,wbestearth]-sc_arr2[1,wbeststb])/2.
+if dostereo then begin 
+	stbhglon=(GET_STEREO_LONLAT( anytim(time_arr[ntime/2.],/vms), 'B', system = 'HEE', /degrees ))[1]
+	stahglon=(GET_STEREO_LONLAT( anytim(time_arr[ntime/2.],/vms), 'A', system = 'HEE', /degrees ))[1]
+	earthsta=stahglon;abs(sc_arr0[1,wbestearth]-sc_arr1[1,wbeststa])/2.
+	earthstb=stbhglon;abs(sc_arr0[1,wbestearth]-sc_arr2[1,wbeststb])/2.
+endif else begin
+	earthsta=0.
+	earthstb=0.
+endelse
 
 ;Calculate ranges to model over for each space craft
 thetarange=ceil([[earthstb/2.-10., earthsta/2.+10.], $
@@ -490,7 +416,7 @@ sw=double(sw)
 ;Temperature
 		sw[*,4,i]=sw[*,4,i]*(au_km/abs(sw[*,0,i]))^alpha_t
 ;Density
-		sw[*,3,i]=sw[*,3,i]*(au_km/abs(sw[*,0,i]))^alpha_rho
+		sw[*,3,i]=calc_helio_props(sw[*,0,i], sc_arr[0,*], sw[*,3,i], /density, constants=constants_arr);sw[*,3,i]*(au_km/abs(sw[*,0,i]))^alpha_rho
 
 ;Calculate earth longitude array
 		if j eq 0 then begin
