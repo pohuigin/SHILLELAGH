@@ -55,8 +55,8 @@ pro cme_forecaster, cmetim, cmelon, cmevel, cmewidth, $ ;CME parameters
 	out_struct=out_struct, cmetitle=cmetitle
 	
 	if n_elements(cmetitle) lt 1 then cmetitle=''
-	if anytim(cmetim) lt anytim(1-jan-2007) then dostereo=0. else dostereo=1
-
+	if anytim(cmetim) lt anytim('1-jan-2007') then dostereo=0. else dostereo=1
+	
 	if not keyword_set(plot_path) then plotp=sw_paths(/cmeplot) else plotp=plot_path
 	if not keyword_set(orbit_path) then orbitp=sw_paths(/cmeinputdata) else orbitp=orbit_path
 	modelp=sw_paths(/sav); else orbitp=orbit_path
@@ -214,6 +214,7 @@ cme_earthlon=earth_lon[0] & earth_lon=earth_lon[1:*]
 		if cmelon gt 0 then modelcraft='stb'
 		if cmelon eq 0 then modelcraft=['sta','stb']
 		if cmelon lt 0 then modelcraft='sta'
+		if not dostereo then modelcraft='omni'
 		
 		print,'thistim='+anytim(thistim,/vms)+' cmetim='+anytim(cmetim,/vms)
 		
@@ -386,10 +387,12 @@ stop
 	tearth=timarr[(wtearth)[0]]
 	trange=[tearth-4.*3600.*24.,tearth+4.*3600.*24.]
 	omni_arr=sw_get_data(trange,/omni,const=sw_constants())
+if dostereo then begin
 	sta_arr=sw_get_data(trange, /sta,const=sw_constants())
 	tsta=timarr[(where(abs(arr_cme_rad-mean(sta_arr[0,wtearth-100l:wtearth+100l])) eq min(abs(arr_cme_rad-mean(sta_arr[0,wtearth-100l:wtearth+100l])))))[0]]
 	stb_arr=sw_get_data(trange, /stb,const=sw_constants())
 	tstb=timarr[(where(abs(arr_cme_rad-mean(stb_arr[0,wtearth-100l:wtearth+100l])) eq min(abs(arr_cme_rad-mean(stb_arr[0,wtearth-100l:wtearth+100l])))))[0]]
+endif
 
 ;	plot,long(round((omni_arr[*,6]-anytim('12-dec-2008'))/3600./24.+20081201.)),omni_arr[*,2],ytit='Speed',xran=long(round((trange-anytim('12-dec-2008'))/3600./24.+20081201.)),/xsty
 ;	vline,long(round((tearth-anytim('12-dec-2008'))/3600./24.+20081201.)),lines=2,thick=2	
@@ -399,23 +402,23 @@ stop
 ;	vline,long(round((tearth-anytim('12-dec-2008'))/3600./24.+20081201.)),lines=2,thick=2	
 
 	utplot, omni_arr[6,*]-trange[0],omni_arr[2,*],anytim(trange[0],/vms),ytit='Speed',timerange=anytim(trange,/vms),yran=[200,800],/xsty,ymargin=[2,1],chars=3,xtickname=strarr(10)+' ',xtit=''
-	oplot,sta_arr[6,*]-trange[0],sta_arr[2,*],color=!red,lines=2
-	oplot,stb_arr[6,*]-trange[0],stb_arr[2,*],color=!blue,lines=3
+	if dostereo then oplot,sta_arr[6,*]-trange[0],sta_arr[2,*],color=!red,lines=2
+	if dostereo then oplot,stb_arr[6,*]-trange[0],stb_arr[2,*],color=!blue,lines=3
 	vline,tearth-trange[0],lines=0,thick=2
-	vline,tsta-trange[0],lines=2,thick=2,color=!red
-	vline,tstb-trange[0],lines=3,thick=2,color=!blue
+	if dostereo then vline,tsta-trange[0],lines=2,thick=2,color=!red
+	if dostereo then vline,tstb-trange[0],lines=3,thick=2,color=!blue
 	utplot, omni_arr[6,*]-trange[0],omni_arr[3,*],anytim(trange[0],/vms),ytit='Ion Density',timerange=anytim(trange,/vms),yran=[0,30],/xsty,ymargin=[5,-2],chars=3,xtickname=strarr(10)+' ',xtit=''
-	oplot,sta_arr[6,*]-trange[0],sta_arr[3,*],color=!red,lines=2
-	oplot,stb_arr[6,*]-trange[0],stb_arr[3,*],color=!blue,lines=3
+	if dostereo then oplot,sta_arr[6,*]-trange[0],sta_arr[3,*],color=!red,lines=2
+	if dostereo then oplot,stb_arr[6,*]-trange[0],stb_arr[3,*],color=!blue,lines=3
 	vline,tearth-trange[0],lines=0,thick=2
-	vline,tsta-trange[0],lines=2,thick=2,color=!red
-	vline,tstb-trange[0],lines=3,thick=2,color=!blue	
+	if dostereo then vline,tsta-trange[0],lines=2,thick=2,color=!red
+	if dostereo then vline,tstb-trange[0],lines=3,thick=2,color=!blue	
 	utplot, omni_arr[6,*]-trange[0],omni_arr[5,*],anytim(trange[0],/vms),ytit='|B Field|',timerange=anytim(trange,/vms),yran=[0,20],/xsty,ymargin=[8,-5],chars=3
-	oplot,sta_arr[6,*]-trange[0],sta_arr[3,*],color=!red,lines=2
-	oplot,stb_arr[6,*]-trange[0],stb_arr[3,*],color=!blue,lines=3
+	if dostereo then oplot,sta_arr[6,*]-trange[0],sta_arr[3,*],color=!red,lines=2
+	if dostereo then oplot,stb_arr[6,*]-trange[0],stb_arr[3,*],color=!blue,lines=3
 	vline,tearth-trange[0],lines=0,thick=2
-	vline,tsta-trange[0],lines=2,thick=2,color=!red
-	vline,tstb-trange[0],lines=3,thick=2,color=!blue
+	if dostereo then vline,tsta-trange[0],lines=2,thick=2,color=!red
+	if dostereo then vline,tstb-trange[0],lines=3,thick=2,color=!blue
 	
 ;	plot,omni_arr[6,*],omni_arr[2,*],ytit='Speed',xran=trange,/xsty,yran=[200,800]
 ;	vline,tearth,lines=2,thick=2	

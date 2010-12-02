@@ -12,8 +12,9 @@ vernal_equinox = -77d ; the longitude of Capella (Aries?) in degrees or solar as
 nan=0/0.
 r_sun=6.955d5 ;km
 omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes (-10 -> +10)
+omegaearth=360d/(365d*3600d*24d) ;degrees/second
 
-constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
+constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun,omegaearth]
 
 return,constants_arr
 

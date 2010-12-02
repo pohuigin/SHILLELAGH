@@ -89,7 +89,7 @@ if n_elements(cbarpos) lt 1 then begin
 	cbarpos[3]=cbarpos0[3];-(cbarpos0[3]-cbarpos0[1])*.05
 	cbarpos[1]=cbarpos0[3]-(cbarpos0[3]-cbarpos0[1])*.05
 endif
-stop
+;stop
 case propnum of 
 	2: color_table, velrange,cbarpos[[0,2]],cbarpos[[1,3]],title='Velocity [Km/s]',/shadow
 	3: color_table, densrange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG |p| [cm^-3]',/shadow
