@@ -2,7 +2,7 @@
 
 pro sw_plot_points, time, array, velocityplot=velocityplot, densityplot=densityplot, $
 	temperatureplot=temperatureplot, magneticfieldplot=magneticfieldplot, planets=planets, $
-	footpoints=footpoints, chvelocity=inchvelocity, save_plot=save_plot, $
+	footpoints=footpoints, chvelocity=inchvelocity, save_plot=save_plot, nowindow=nowindow, $
 	title_string=title_string, cbarpos=cbarpos, pmulti=pmulti, no_stereo=no_stereo;,multiplot=multiplot
 
 thistime=anytim(time)
@@ -46,7 +46,7 @@ earth_lon=sw_theta_shift(earth_lon)
 this_earthlon=earth_lon[0]
 
 wxs=700 & wys=700
-window,xs=wxs,ys=wys
+if not keyword_set(nowindow) then window,xs=wxs,ys=wys
 
 ;Plot the axes
 setcolors,/sys,/sil,/qui

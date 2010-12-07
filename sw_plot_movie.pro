@@ -1,12 +1,13 @@
-pro sw_plot_movie, intime, trange=intrange, tbin=intbin
+pro sw_plot_movie, intime, trange=intrange, tbin=intbin, _extra=_extra
 
 time=anytim(intime)
 if n_elements(intrange) lt 1 then trange=[time-5.*24.*3600.,time+10.*24.*3600.] else trange=time+intrange*24.*3600.
 if n_elements(intbin) lt 1 then tbin=12.*3600. else tbin=intbin*24.*3600.
 
-savp='~/science/procedures/cme_propagation/sw_prop_save/'
-plotp='~/science/procedures/cme_propagation/heliosphere_property_plots/'
-moviep='~/science/procedures/cme_propagation/claire_events/claire_20100302_movie/'
+savp='~/science/data/cme_propagation/sw_prop_save/'
+plotp='~/science/data/cme_propagation/heliosphere_property_plots/'
+;moviep='~/science/procedures/cme_propagation/claire_events/claire_20100302_movie/'
+moviep='~/science/data/cme_propagation/mars_event/'
 
 if n_elements(trange) eq 1 then ntime=1. else ntime=round((trange[1]-trange[0])/tbin)
 if ntime eq 1. then time_arr=time else time_arr=findgen(ntime)*tbin+trange[0]
@@ -27,15 +28,15 @@ for i=0,ntime-1 do begin
 	!p.multi=[3,3,1]
 	!p.color = 0
 	sw_plot_points, anytim(time_arr[i],/vms), /velocityplot, pmulti=[3,3,1], $
-		save_plot=save_plot, title_string='Velocity', cbarpos=[.05,.92,.3,.98];footpoints=footpoints, chvelocity=inchvelocity
+		save_plot=save_plot, title_string='Velocity', cbarpos=[.05,.92,.3,.98], /nowindow, _extra=_extra;footpoints=footpoints, chvelocity=inchvelocity
 	!p.multi=[2,3,1]
 	!p.color = 0
 	sw_plot_points, anytim(time_arr[i],/vms), /densityplot, pmulti=[2,3,1], $
-		save_plot=save_plot,title_string='Density', cbarpos=[.4,.92,.65,.98];footpoints=footpoints, chvelocity=inchvelocity
+		save_plot=save_plot,title_string='Density', cbarpos=[.4,.92,.65,.98], /nowindow, _extra=_extra;footpoints=footpoints, chvelocity=inchvelocity
 	!p.multi=[1,3,1]
 	!p.color = 0
 	sw_plot_points, anytim(time_arr[i],/vms), /magneticfieldplot, pmulti=[1,3,1], $
-		save_plot=save_plot, title_string='B Field', cbarpos=[.7,.92,.95,.98];footpoints=footpoints, chvelocity=inchvelocity
+		save_plot=save_plot, title_string='B Field', cbarpos=[.7,.92,.95,.98], /nowindow, _extra=_extra;footpoints=footpoints, chvelocity=inchvelocity
 
 	window_capture,file=moviep+'shillelagh_vel_dens_b_'+string(i,form='(I03)'),/png
 	erase
