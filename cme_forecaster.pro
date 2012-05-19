@@ -286,10 +286,10 @@ cme_earthlon=earth_lon[0] & earth_lon=earth_lon[1:*]
 				arr_cme_mass[i]=thismass
 			endif else begin
 				cme_rad=deltat*cmevel;/au_m
-				arr_cme_rad[i]=cme_rad
+				;arr_cme_rad[i]=cme_rad
 				arr_cme_lon[i]=cmelon
 				arr_cme_width[i]=cmewidth
-				arr_cme_vel[i]=thiscmevel
+				;arr_cme_vel[i]=thiscmevel
 			endelse
 		endif else begin
 			if not keyword_set(res1tore) then begin

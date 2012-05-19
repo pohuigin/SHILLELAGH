@@ -15,10 +15,20 @@ if keyword_set(log) then thisoriginx=thisorigin  else thisoriginx=min0
 
 ;origpos=!p.position
 ;!p.position=[.5,.8,.8,.9]
+
+;plot the color gradient
+plot_image,ctarr[1:*,*],position=thispos,yticklen=.001,xticklen=.001,xtit='',ytit='',/noerase,xtickname=strarr(10)+' ',ytickname=strarr(10)+' '
+
+;stop
+
+setcolors,/sys,/silent
 if keyword_set(shadowtext) then begin
-	plot_image,ctarr[1:*,*],yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=1.4,position=thispos,origin=[thisoriginx,thisorigin],scale=thisscale,xticklen=1,xlog=log,color=0,thick=2,charthick=4;,xticks=2
-	plot_image,ctarr[1:*,*],yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=1.4,position=thispos,origin=[thisoriginx,thisorigin],scale=thisscale,xticklen=1,xlog=log,color=255,thick=2,charthick=1.4,/data
-endif else plot_image,ctarr[1:*,*],yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=2,position=thispos,origin=[thisoriginx,thisorigin],scale=thisscale,xticklen=1,xlog=log,color=0,thick=2,charthick=1;,xticks=2
+;	plot_image,ctarr[1:*,*],yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=1.4,position=thispos,origin=[thisoriginx,thisorigin],scale=thisscale,xticklen=1,xlog=log,color=0,thick=2,charthick=4;,xticks=2
+;	plot_image,ctarr[1:*,*],yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=1.4,position=thispos,origin=[thisoriginx,thisorigin],scale=thisscale,xticklen=1,xlog=log,color=255,thick=2,charthick=1.4,/data
+	plot,fltarr(100,100),yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=1.4,position=thispos,xran=minmax,xticklen=1,xlog=log,color=!black,thick=2,charthick=4,/nodata
+	plot,fltarr(100,100),yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=1.4,position=thispos,xran=minmax,xticklen=1,xlog=log,color=!white,thick=2,charthick=1.4,/nodata
+;endif else plot_image,ctarr[1:*,*],yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=1.4,position=thispos,origin=[thisoriginx,thisorigin],scale=thisscale,xticklen=1,xlog=log,color=255,thick=2,charthick=5,/nodata;,xticks=2
+endif else plot,fltarr(100,100),yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=1.4,position=thispos,xran=minmax,xticklen=1,xlog=log,color=255,thick=2,charthick=5,/nodata;,xticks=2
 
 ;plot_image,ctarr[1:*,*],yticklen=.001,ytickname=strarr(10)+' ',xtit=title,/noerase,charsize=2,position=thispos,origin=[thisoriginx,thisorigin],scale=thisscale,xticklen=1,xlog=log,/nodata,color=0;,xticks=2
 

@@ -1,8 +1,10 @@
-pro sw_plot_movie, intime, trange=intrange, tbin=intbin, _extra=_extra
+pro sw_plot_movie, intime, trange=intrange, tbin=intbin, _extra=_extra, $
+	velocity=velocity,density=density,magnetic=magnetic, wsize=wsize
 
 time=anytim(intime)
 if n_elements(intrange) lt 1 then trange=[time-5.*24.*3600.,time+10.*24.*3600.] else trange=time+intrange*24.*3600.
 if n_elements(intbin) lt 1 then tbin=12.*3600. else tbin=intbin*24.*3600.
+if n_elements(wsize) ne 1 then wsize=500
 
 savp='~/science/data/cme_propagation/sw_prop_save/'
 plotp='~/science/data/cme_propagation/heliosphere_property_plots/'
@@ -22,21 +24,32 @@ endif
 !p.color = 0   
 !p.charthick=1
 !p.charsize = 1.4
-window, xsize=1200, ysize=450	
+nplot=keyword_set(velocity)+keyword_set(density)+keyword_set(magnetic)
+window, xsize=nplot*wsize, ysize=wsize	
 
 for i=0,ntime-1 do begin
-	!p.multi=[3,3,1]
-	!p.color = 0
-	sw_plot_points, anytim(time_arr[i],/vms), /velocityplot, pmulti=[3,3,1], $
-		save_plot=save_plot, title_string='Velocity', cbarpos=[.05,.92,.3,.98], /nowindow, _extra=_extra;footpoints=footpoints, chvelocity=inchvelocity
-	!p.multi=[2,3,1]
-	!p.color = 0
-	sw_plot_points, anytim(time_arr[i],/vms), /densityplot, pmulti=[2,3,1], $
-		save_plot=save_plot,title_string='Density', cbarpos=[.4,.92,.65,.98], /nowindow, _extra=_extra;footpoints=footpoints, chvelocity=inchvelocity
-	!p.multi=[1,3,1]
-	!p.color = 0
-	sw_plot_points, anytim(time_arr[i],/vms), /magneticfieldplot, pmulti=[1,3,1], $
-		save_plot=save_plot, title_string='B Field', cbarpos=[.7,.92,.95,.98], /nowindow, _extra=_extra;footpoints=footpoints, chvelocity=inchvelocity
+	!p.multi=[nplot,nplot,1]
+	print,[nplot,nplot,1]
+	
+	if keyword_set(velocity) then begin
+		!p.color = 0
+		sw_plot_points, anytim(time_arr[i],/vms), /velocityplot, $
+			save_plot=save_plot, title_string='Velocity', cbarpos=[.05,.92,.3,.98], /nowindow, _extra=_extra;footpoints=footpoints, chvelocity=inchvelocity
+	endif
+	
+	!p.multi=[nplot-1,nplot,1]
+	if keyword_set(density) then begin
+		!p.color = 0
+		sw_plot_points, anytim(time_arr[i],/vms), /densityplot, $
+			save_plot=save_plot,title_string='Density', cbarpos=[.4,.92,.65,.98], /nowindow, _extra=_extra;footpoints=footpoints, chvelocity=inchvelocity
+	endif
+	
+	!p.multi=[nplot-2,nplot,1]
+	if keyword_set(magnetic) then begin
+		!p.color = 0
+		sw_plot_points, anytim(time_arr[i],/vms), /magneticfieldplot, $
+			save_plot=save_plot, title_string='B Field', cbarpos=[.7,.92,.95,.98], /nowindow, _extra=_extra;footpoints=footpoints, chvelocity=inchvelocity
+	endif
 
 	window_capture,file=moviep+'shillelagh_vel_dens_b_'+string(i,form='(I03)'),/png
 	erase

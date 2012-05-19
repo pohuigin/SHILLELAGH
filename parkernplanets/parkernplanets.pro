@@ -13,7 +13,7 @@ st_jd_struct = anytim2jd( anytim(tstart,/vms) )
 st_jd = st_jd_struct.int + st_jd_struct.frac
 ; Calculate earth's heliocentric latitude, longitude and distance from Sun
 helio, st_jd, 3, earthhrad, earthhlon, earthhlat
-vernal_equinox = 79. ; the longitude of Capella in degrees 
+vernal_equinox = 77.;79. ; the longitude of Capella in degrees 
 earthhlon = earthhlon + vernal_equinox + 180.
 
 ;!!!!
@@ -186,7 +186,7 @@ pro parkernplanets, date, foot_points = foot_points, planets = planets, $
   
   if ( keyword_set( fov ) eq 0 ) then xrange = [  max_orbit, -max_orbit  ] else xrange = [ fov / 2., -fov / 2. ]
    
-  plot, pos_x, pos_y, psym = 3, $;xrange = xrange, yrange = xrange, $
+  plot, pos_x, pos_y, psym = 3, xrange = xrange, yrange = xrange, $
         xtitle = 'Heliocentric Distance (AU)', ytitle = 'Heliocentric Distance (AU)', $
 	title = strmid( date, 0, 17 ) + ' (' + arr2str( fix(round(vel_wind)), /trim ) + ' km/sec)', /ys, /xs, color = 0, _extra=_extra
 

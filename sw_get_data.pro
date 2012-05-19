@@ -1,7 +1,7 @@
 ;-------------------------------------------------------------------------->
 
 function sw_get_data, trange, omni=omni, sta=sta, stb=stb, ace=ace, wind=wind, $
-	constants=constants_arr, geoindex=geoindex
+	constants=constants_arr, geoindex=geoindex, custom=fcustom
 
 orbitp=sw_paths(/insitu)
 ;constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
@@ -15,35 +15,60 @@ nan=constants_arr[5]
 r_sun=constants_arr[6]
 omegasun=constants_arr[7]
 
+;stop
+
 if keyword_set(omni) then begin
-	readcol,orbitp+'omni_'+strmid(time2file(trange[0],/date),0,4)+'.txt',omn_dd,omn_tt,omn_hglat,omn_hglon,omn_br,omn_bt,omn_bn,omn_bmag,omn_vel,omn_elev,omn_azim,omn_rho,omn_temp,form='A,A,F,F,F,F,F,F,F,F,F,F,F',delim=' '
-	omn_tim=anytim(strmid(omn_dd,6,4)+'-'+strmid(omn_dd,3,2)+'-'+strmid(omn_dd,0,2)+'T'+omn_tt)
-	omn_hglon=sw_theta_shift(omn_hglon)
-	sc_vel_arr=omn_vel
-	sc_tim_arr=omn_tim
-	sc_r_arr=fltarr(n_elements(sc_tim_arr))+au_km
-	sc_hgtheta_arr=omn_hglon ;need to convert to HAE or w/e.
-	sc_bmag=omn_bmag;omn_br;(omn_br^2.+omn_bt^2.+omn_bn^2.)^.5
-;todo: radial field
-	sc_rho=omn_rho
-	sc_temp=omn_temp
-	sc_br=omn_br
-	sc_bt=omn_bt
-	sc_bn=omn_bn
+	if n_elements(fcustom) gt 0 then begin
+		print,[['--------------------------'],['CUSTOM INPUT FILE DETECTED'],[fcustom[0]],['--------------------------']]
+		restore,fcustom[0]
+	endif else begin
+		if fix(strmid(time2file(trange[0],/date),0,4)) lt 1990 then begin
+			readcol,orbitp+'omni_'+strmid(time2file(trange[0],/date),0,4)+'.txt',omn_dd,omn_tt,omn_bmag,omn_temp,omn_rho,omn_vel,form='A,A,F,F,F,F',delim=' '
+			omn_tim=anytim(strmid(omn_dd,6,4)+'-'+strmid(omn_dd,3,2)+'-'+strmid(omn_dd,0,2)+'T'+omn_tt)
+			sc_vel_arr=omn_vel
+			sc_tim_arr=omn_tim
+			sc_r_arr=fltarr(n_elements(sc_tim_arr))+au_km
+			sc_hgtheta_arr=(GET_STEREO_LONLAT( anytim(omn_tim,/vms), 'Earth', system = 'HCI', /degrees ))[1,*] ;need to convert to HAE or w/e.
+			sc_bmag=omn_bmag;omn_br;(omn_br^2.+omn_bt^2.+omn_bn^2.)^.5
+			sc_rho=omn_rho
+			sc_temp=omn_temp
+			sc_br=fltarr(n_elements(sc_tim_arr))
+			sc_bt=fltarr(n_elements(sc_tim_arr))
+			sc_bn=fltarr(n_elements(sc_tim_arr))
+
+		endif else begin
+			readcol,orbitp+'omni_'+strmid(time2file(trange[0],/date),0,4)+'.txt',omn_dd,omn_tt,omn_hglat,omn_hglon,omn_br,omn_bt,omn_bn,omn_bmag,omn_vel,omn_elev,omn_azim,omn_rho,omn_temp,form='A,A,F,F,F,F,F,F,F,F,F,F,F',delim=' '
+			omn_tim=anytim(strmid(omn_dd,6,4)+'-'+strmid(omn_dd,3,2)+'-'+strmid(omn_dd,0,2)+'T'+omn_tt)
+			omn_hglon=sw_theta_shift(omn_hglon)
+			sc_vel_arr=omn_vel
+			sc_tim_arr=omn_tim
+			sc_r_arr=fltarr(n_elements(sc_tim_arr))+au_km
+			sc_hgtheta_arr=omn_hglon ;need to convert to HAE or w/e.
+			sc_bmag=omn_bmag;omn_br;(omn_br^2.+omn_bt^2.+omn_bn^2.)^.5
+		;todo: radial field
+			sc_rho=omn_rho
+			sc_temp=omn_temp
+			sc_br=omn_br
+			sc_bt=omn_bt
+			sc_bn=omn_bn
+		endelse
+	endelse
 endif
 
 if keyword_set(sta) then begin
-	readcol,orbitp+'sta_'+strmid(time2file(trange[0],/date),0,4)+'.txt',sta_dd,sta_tt,sta_r,sta_hglat,sta_hglon,sta_br,sta_bt,sta_bn,sta_b,sta_v,sta_sw_lat,sta_sw_lon,sta_rho,sta_t,form='A,A,F,F,F,F,F,F,F,F,F,F,F,F',delim=' '
-	sc_tim_arr=anytim(strmid(sta_dd,6,4)+'-'+strmid(sta_dd,3,2)+'-'+strmid(sta_dd,0,2)+'T'+sta_tt)
-	sc_hgtheta_arr=sw_theta_shift(sta_hglon)
-	sc_vel_arr=sta_v
-	sc_r_arr=sta_r*au_km
-	sc_bmag=sta_b;sta_br
-	sc_rho=sta_rho
-	sc_temp=sta_t
-	sc_br=sta_br
-	sc_bt=sta_bt
-	sc_bn=sta_bn
+	if n_elements(fcustom) gt 1 then restore,fcustom[1] else begin
+		readcol,orbitp+'sta_'+strmid(time2file(trange[0],/date),0,4)+'.txt',sta_dd,sta_tt,sta_r,sta_hglat,sta_hglon,sta_br,sta_bt,sta_bn,sta_b,sta_v,sta_sw_lat,sta_sw_lon,sta_rho,sta_t,form='A,A,F,F,F,F,F,F,F,F,F,F,F,F',delim=' '
+		sc_tim_arr=anytim(strmid(sta_dd,6,4)+'-'+strmid(sta_dd,3,2)+'-'+strmid(sta_dd,0,2)+'T'+sta_tt)
+		sc_hgtheta_arr=sw_theta_shift(sta_hglon)
+		sc_vel_arr=sta_v
+		sc_r_arr=sta_r*au_km
+		sc_bmag=sta_b;sta_br
+		sc_rho=sta_rho
+		sc_temp=sta_t
+		sc_br=sta_br
+		sc_bt=sta_bt
+		sc_bn=sta_bn
+	endelse
 endif
 
 if keyword_set(stb) then begin

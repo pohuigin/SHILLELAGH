@@ -18,6 +18,12 @@
 ;	3.) Only use certain space craft to model the wind. Default assumes all.
 ;	IDL>sw_propagate,'12-dec-2008',spacecraft=['sta','omni']
 ;
+;	4.) Only compute a single time.
+;	IDL>sw_propagate,'12-dec-2008',trange=0
+;
+;	5.) Run a single STEREO instrument with a specific theta range
+;	IDL>sw_propagate,'15-jun-2008',trange=0,space='sta', thetarange=[[0,0],[-60,-30],[0,0]]
+;
 ;NOTES:
 ;	This algorithm must be run in IDL 32 bit mode due to its utilization of SPICE.
 ;
@@ -169,7 +175,7 @@ endif
 
 ;skipheliocentric:
 
-save,map_stack,file=sw_paths(/sav)+'sw_properties_heliospheric_'+time2file(anytim(tim,/vms))+'.sav'
+save,map_stack,file=sw_paths(/sav)+'sw_properties_heliospheric_'+time2file(anytim(tim,/vms))+'.sav',/compress
 
 return,map_stack
 
@@ -178,7 +184,7 @@ end
 ;-------------------------------------------------------------------------->
 ;Propagate an array of plasma blobs along their spiral using given velocity
 function sw_spiral, inblob, theta_range=inthetarange, theta_bin=inthetabin, r_range=inrrange, $
-	constants=constants_arr
+	constants=constants_arr, nparam=nspiralparam, earthlon=this_earthlon, no_alpha=no_alpha
 
 ;constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
 alpha_b=constants_arr[0]
@@ -194,6 +200,8 @@ if n_elements(inthetarange) lt 1 then thetarange=[-22.,22.] else thetarange=inth
 if n_elements(inthetabin) lt 1 then thetabin=1. else thetabin=inthetabin
 if n_elements(inrrange) lt 1 then rrange=[-3.5*au_km,10.*au_km] else rrange=inrrange
 
+;stop
+
 ;Get rid of small gap due to non integer theta range and large bin.
 thetarange=thetarange+[-thetabin/2.,2.*thetabin]
 
@@ -201,10 +209,9 @@ blob_arr=inblob
 if (where(blob_arr[*,0] le rrange[1] and blob_arr[*,0] gt rrange[0]))[0] eq -1 then return,nan
 blob_arr=blob_arr[where(blob_arr[*,0] le rrange[1] and blob_arr[*,0] gt rrange[0]),*]
 
-blank=fltarr(1,6)
-spiral_arr=blank
-
 nblob=n_elements(blob_arr[*,0])
+blank=fltarr(1,nspiralparam)
+spiral_arr=blank
 for i=0l,nblob-1l do begin
 	thisblob=blob_arr[i,*]
 	thisthetarange=thetarange
@@ -227,24 +234,29 @@ for i=0l,nblob-1l do begin
 	if npts lt 1 then continue
 	
 	;Properties of each point along spiral
-	thisspiral=fltarr(npts,6)
+	thisspiral=fltarr(npts,nspiralparam)	
 	
 	;Load SW properties for each point along spiral
-	thisspiral[*,2]=thisblob[2]
-	thisspiral[*,3]=thisblob[3]
-	thisspiral[*,4]=thisblob[4]
-	thisspiral[*,5]=thisblob[5]
+	;for j=2,n_elements(thisblob)-1 do thisspiral[*,j]=thisblob[j]
+	thisspiral[*,2]=thisblob[2] ;velocity
+	thisspiral[*,3]=thisblob[3] ;density
+	thisspiral[*,4]=thisblob[4] ;temperature
+	thisspiral[*,5]=thisblob[5] ;Bmagnitude
+	;skip 6, the time column
+	thisspiral[*,6]=thisblob[7] ;Bradial
 	
 	;Delta theta from blob starting point
-	theta_spiral=findgen(npts)*thetabin+thisthetarange[0]
+	theta_spiral=findgen(npts)*thetabin+thisthetarange[0]+this_earthlon
 	
 	;delta R = R(blob) - delta theta (velocity(blob) / omega_sun)
-	if bloblt0 then r_spiral = thisblob[0]-( thisblob[2] / omegasun ) * theta_spiral $
-		else r_spiral = thisblob[0]-( thisblob[2] / omegasun ) * theta_spiral
+	if bloblt0 then r_spiral = thisblob[0]-( thisblob[2] / omegasun ) * (theta_spiral-thisblob[1]) $
+		else r_spiral = thisblob[0]-( thisblob[2] / omegasun ) * (theta_spiral-thisblob[1])
 	thisspiral[*,0]=r_spiral
 	
 	;theta = theta(blob) + delta theta
-	thisspiral[*,1]=thisblob[1]+theta_spiral
+;Center spiral at angle of earth NOT at angle of "blob"	
+;	thisspiral[*,1]=thisblob[1]+theta_spiral
+	thisspiral[*,1]=theta_spiral
 
 ;Assume 1/R^alpha dependence of Solar Wind properties
 
@@ -256,21 +268,23 @@ for i=0l,nblob-1l do begin
 			if wgoodspiral[0] ne -1 then thisspiral=thisspiral[wgoodspiral,*]
 		endelse
 	
+		if not keyword_set(no_alpha) then begin
 ;B Field
-		thisspiral[*,5]=thisspiral[*,5]*(rbloblt0/thisspiral[*,0])^alpha_b
+			thisspiral[*,5]=thisspiral[*,5]*(rbloblt0/thisspiral[*,0])^alpha_b
 ;Temperature
-		thisspiral[*,4]=thisspiral[*,4]*(rbloblt0/thisspiral[*,0])^alpha_t
+			thisspiral[*,4]=thisspiral[*,4]*(rbloblt0/thisspiral[*,0])^alpha_t
 ;Density
-
-		thisspiral[*,3]=calc_helio_props(thisspiral[*,0], rbloblt0, thisspiral[*,3], /density, constants=constants_arr);thisspiral[*,3]*(rbloblt0/thisspiral[*,0])^alpha_rho
-		
+			thisspiral[*,3]=calc_helio_props(thisspiral[*,0], rbloblt0, thisspiral[*,3], /density, constants=constants_arr);thisspiral[*,3]*(rbloblt0/thisspiral[*,0])^alpha_rho
+		endif
 	endif else begin
+		if not keyword_set(no_alpha) then begin
 ;B Field
-		thisspiral[*,5]=thisspiral[*,5]*(thisblob[0]/thisspiral[*,0])^alpha_b
+			thisspiral[*,5]=thisspiral[*,5]*(thisblob[0]/thisspiral[*,0])^alpha_b
 ;Temperature
-		thisspiral[*,4]=thisspiral[*,4]*(thisblob[0]/thisspiral[*,0])^alpha_t
+			thisspiral[*,4]=thisspiral[*,4]*(thisblob[0]/thisspiral[*,0])^alpha_t
 ;Density
-		thisspiral[*,3]=calc_helio_props(thisspiral[*,0], thisblob[0], thisspiral[*,3], /density, constants=constants_arr);thisspiral[*,3]*(thisblob[0]/thisspiral[*,0])^alpha_rho
+			thisspiral[*,3]=calc_helio_props(thisspiral[*,0], thisblob[0], thisspiral[*,3], /density, constants=constants_arr);thisspiral[*,3]*(thisblob[0]/thisspiral[*,0])^alpha_rho
+		endif
 	endelse
 
 	;Filter spiral points with R lt 0
@@ -283,6 +297,8 @@ for i=0l,nblob-1l do begin
 
 endfor
 
+;stop
+
 outspiral=spiral_arr[1:*,*]
 return,outspiral
 
@@ -294,16 +310,31 @@ end
 ;intime = 	'DD-Mon-YYYY' to propagate to
 ;trange = 	[2 elements] days relative to input time
 ;tbin	=	days between extrapolation solutions
+;if you want to run the code for a list of specified times, 
+;	set INTIME to the list of times and set TIMEREANGE=0.
+;thetarange = if only running one SC, then you can set thetarange to a 2 element array of the +- angle (centered at 0, where 0=earth longitude) in degree to propagate
+;outflist = output a list of the save files generated
 
-pro sw_propagate, intime, trange=intrange, tbin=intbin, no_alpha=no_alpha, full360=full360, $
+pro sw_propagate, intime, trange=intrange, tbin=intbin, savpath=insavpath, no_alpha=no_alpha, full360=full360, $
 	test=test, plot_points=plot_points, spacecraft=spacecraft, res1tore=res1tore, $
-	interp_maps=interp_maps, save_maps=save_maps, plot_interp=plot_interp
+	interp_maps=interp_maps, save_maps=save_maps, plot_interp=plot_interp, filetag=infiletag, $
+	custom=fcustom, nostereo=nostab, thetarange=inthetarange, outflist=fsavlist
+
+if n_elements(insavpath) gt 0 then savpath=insavpath else savpath=sw_paths(/sav)
+if n_elements(infiletag) gt 0 then filetag=infiletag else filetag=''
+;initialise list of save files to output
+fsavlist=''
 
 time=anytim(intime)
-if n_elements(intrange) lt 1 then trange=[time-5.*24.*3600.,time+10.*24.*3600.] else trange=time+intrange*24.*3600.
+if n_elements(intrange) lt 1 then trange=[time-5.*24.*3600.,time+10.*24.*3600.] else begin
+	if n_elements(intrange) eq 1 then trange=intrange
+	if n_elements(intrange) gt 1 then trange=time+intrange*24.*3600.
+endelse
 if n_elements(intbin) lt 1 then tbin=12.*3600. else tbin=intbin*24.*3600.
 
-if trange[0] ge anytim('1-jan-2007') then dostereo=1 else dostereo=0 
+;if trange[0] ge anytim('1-jan-2007') then dostereo=1 else dostereo=0 
+if time[0] ge anytim('1-jan-2007') then dostereo=1 else dostereo=0 
+if keyword_set(nostab) then dostereo=0
 
 if keyword_set(plot_points) then window,xs=750,ys=750
 
@@ -324,28 +355,39 @@ omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes 
 
 constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
 
+if n_elements(trange) eq 1 then begin 
+	time_arr=time
+	ntime=n_elements(time)
+	trange=minmax(time_arr)
+endif else begin
+	ntime=round((trange[1]-trange[0])/tbin)
+	time_arr=findgen(ntime)*tbin+trange[0]
+endelse
+
 ;Read in situ data SC=([r,theta,v,rho,temp,bmag,t],nblob)
 if dostereo then nspacecraft=3 else nspacecraft=1
 if not keyword_set(res1tore) then begin
-	sc_arr0=sw_get_data(trange,/omni,const=constants_arr)
+	sc_arr0=sw_get_data(trange,/omni,const=constants_arr,custom=fcustom)
 	if dostereo then begin 
-		sc_arr1=sw_get_data(trange,/sta,const=constants_arr)
-		sc_arr2=sw_get_data(trange,/stb,const=constants_arr)
+		sc_arr1=sw_get_data(trange,/sta,const=constants_arr,custom=fcustom)
+;!!!TEMP
+;		sc_arr2=sc_arr1
+		sc_arr2=sw_get_data(trange,/stb,const=constants_arr,custom=fcustom)
 	endif
 	save,sc_arr0,sc_arr1,sc_arr2,file=sw_paths(/sav)+'sw_run_data_load_restore.sav'
 endif else restore,sw_paths(/sav)+'sw_run_data_load_restore.sav'
 
-if n_elements(trange) eq 1 then ntime=1. else ntime=round((trange[1]-trange[0])/tbin)
-if ntime eq 1. then time_arr=time else time_arr=findgen(ntime)*tbin+trange[0]
-
 ;Create SW propagation SW(r,theta,v,rho,temp,bmag,t_sc) array sw=[nblob,nparam=7,ntime]
+nswparam=8
+nspiralprop=nswparam-1 ;do -1 to exclude time column
+
 nblob0=n_elements(sc_arr0[0,*])
-sw0=fltarr(nblob0,7,ntime)
+sw0=fltarr(nblob0,nswparam,ntime)
 if dostereo then begin
 	nblob1=n_elements(sc_arr1[0,*])
-	sw1=fltarr(nblob1,7,ntime)
+	sw1=fltarr(nblob1,nswparam,ntime)
 	nblob2=n_elements(sc_arr2[0,*])
-	sw2=fltarr(nblob2,7,ntime)
+	sw2=fltarr(nblob2,nswparam,ntime)
 endif
 
 ;Find range to solve spiral for each space craft: 1/2*Difference between earth and spacecraft + 90 degrees
@@ -362,32 +404,47 @@ endif else begin
 	earthstb=0.
 endelse
 
-;Calculate ranges to model over for each space craft
-thetarange=ceil([[earthstb/2.-10., earthsta/2.+10.], $
-	[-earthsta/2.,180.-earthsta+10.], $
-	[-180.-earthstb-10.,-1.*earthstb/2.]])
-if keyword_set(full360) then thetarange=ceil([[0.,360.], [0,360.], [0,360.]])
-if n_elements(spacecraft) gt 0 then begin
-	if n_elements(spacecraft) eq 2 then begin
-		if strjoin(strlowcase(spacecraft)) eq ['stastb'] or strjoin(strlowcase(spacecraft)) eq ['stbsta'] then $
-			thetarange=ceil([[0.,0.], [-earthsta,180.-earthsta], [-180.-earthstb,-1.*earthstb]])
-		if strjoin(strlowcase(spacecraft)) eq ['staomni'] or strjoin(strlowcase(spacecraft)) eq ['omnista'] then $
-			thetarange=ceil([[-180-earthsta/2., earthsta/2.], [-earthsta/2.,180.-earthsta], [0.,0.]])
-		if strjoin(strlowcase(spacecraft)) eq ['stbomni'] or strjoin(strlowcase(spacecraft)) eq ['omnistb'] then $
-			thetarange=ceil([[earthstb/2.-10., 180+earthsta/2.], [0,0], [-180.-earthstb,-1.*earthstb/2.]])
-	endif
-	if n_elements(spacecraft) eq 1 then begin
-		if strlowcase(spacecraft) eq 'omni' then thetarange=ceil([[-180,180],[0,0],[0,0]])
-		if strlowcase(spacecraft) eq 'sta' then thetarange=ceil([[0,0],[-180,180],[0,0]])
-		if strlowcase(spacecraft) eq 'stb' then thetarange=ceil([[0,0],[0,0],[-180,180]])
+if n_elements(inthetarange) gt 0 then thetarange=inthetarange else begin
+;	Calculate ranges to model over for each space craft
+;	thetarange=ceil([[earthstb/2., earthsta/2.], $
+;		[-earthsta/2.,180.], $
+;		[-180.,earthstb/2.]])
+	thetarange=ceil([[earthstb/2.-10., earthsta/2.+10.], $ ;tried to fix non-matching up limits...
+		[earthsta/2.+10.,180.], $
+		[-180.,earthstb/2.-10.]])
+;	thetarange=sw_theta_shift(thetarange)
+endelse
+
+if n_elements(inthetarange) lt 1 then begin
+	if keyword_set(full360) then thetarange=ceil([[0.,360.], [0,360.], [0,360.]])
+	if n_elements(spacecraft) gt 0 then begin
+		if n_elements(spacecraft) eq 2 then begin
+			if strjoin(strlowcase(spacecraft)) eq ['stastb'] or strjoin(strlowcase(spacecraft)) eq ['stbsta'] then $
+				thetarange=ceil([[0.,0.], [-earthsta,180.-earthsta], [-180.-earthstb,-1.*earthstb]])
+			if strjoin(strlowcase(spacecraft)) eq ['staomni'] or strjoin(strlowcase(spacecraft)) eq ['omnista'] then $
+				thetarange=ceil([[-180-earthsta/2., earthsta/2.], [-earthsta/2.,180.-earthsta], [0.,0.]])
+			if strjoin(strlowcase(spacecraft)) eq ['stbomni'] or strjoin(strlowcase(spacecraft)) eq ['omnistb'] then $
+				thetarange=ceil([[earthstb/2.-10., 180+earthsta/2.], [0,0], [-180.-earthstb,-1.*earthstb/2.]])
+		endif
+		if n_elements(spacecraft) eq 1 then begin
+			if strlowcase(spacecraft) eq 'omni' then thetarange=ceil([[-180,180],[0,0],[0,0]])
+			if strlowcase(spacecraft) eq 'sta' then thetarange=ceil([[0,0],[-180,180],[0,0]])
+			if strlowcase(spacecraft) eq 'stb' then thetarange=ceil([[0,0],[0,0],[-180,180]])	
+		endif
 	endif
 endif
+;stop
 
 ;Run through each propagation time within TIMERANGE using TBIN
 for i=0l,ntime-1l do begin
-spiral_arrays=transpose([0.,0.,0.,0.,0.,0.])
+	spiral_arrays=transpose(fltarr(nspiralprop)) ;!!!added an element to stick bradial
+
 ;Run through each spacecraft
 	for j=0,nspacecraft-1 do begin
+	
+;Skip this iteration if the range for the instrument is [0,0]
+		if thetarange[0,j] eq 0 and thetarange[1,j] eq 0 then goto,skip_instrument 
+
 		ex=execute('sw=sw'+strtrim(j,2)+' & nblob=nblob'+strtrim(j,2)+' & sc_arr=sc_arr'+strtrim(j,2))
 		thistime=time_arr[i]
 ;Fill time when blob measured is at spacecraft
@@ -398,7 +455,9 @@ spiral_arrays=transpose([0.,0.,0.,0.,0.,0.])
 		
 ;Fill B field
 		sw[*,5,i]=sc_arr[5,*]
-		
+
+;Fill Bradial field
+		sw[*,7,i]=sc_arr[7,*]		
 		
 ;Fill density
 		sw[*,3,i]=sc_arr[3,*]
@@ -412,14 +471,16 @@ spiral_arrays=transpose([0.,0.,0.,0.,0.,0.])
 ;Assume 1/R^alpha dependence of Solar Wind properties
 sw=double(sw)
 ;B Field
+	if not keyword_set(no_alpha) then begin
 		sw[*,5,i]=sw[*,5,i]*(au_km/abs(sw[*,0,i]))^alpha_b
 ;Temperature
 		sw[*,4,i]=sw[*,4,i]*(au_km/abs(sw[*,0,i]))^alpha_t
 ;Density
 		sw[*,3,i]=calc_helio_props(sw[*,0,i], sc_arr[0,*], sw[*,3,i], /density, constants=constants_arr);sw[*,3,i]*(au_km/abs(sw[*,0,i]))^alpha_rho
-
+	endif
+	
 ;Calculate earth longitude array
-		if j eq 0 then begin
+		if j eq 0 or n_elements(this_earthlon) lt 1 then begin
 			earth_jd_struct = anytim2jd( anytim([thistime,reform(sw[*,6,i])],/vms) )
 			earth_jd = earth_jd_struct.int + earth_jd_struct.frac
 			helio, earth_jd, 3, earth_rad, earth_lon, earth_lat
@@ -431,9 +492,43 @@ sw=double(sw)
 ;Calculate theta
 		sw[*,1,i]=sc_arr[1,*] ;earth_lon
 		sw[*,1,i]=sw_theta_shift(sw[*,1,i])
+
+;stop
+
+;Plot radial propagation
+;window,xs=650,ys=650
+;plot,sw[*,0]/au_km>0,sw[*,1]*!dtor,/polar,ps=4,xrange=[-1.5,1.5],yrange=[-1.5,1.5],chars=2,/iso,xmargin=[5,1],ymargin=[5,1],xtit=anytim(thistime,/vms,/date)+' [AU]'
+;setcolors,/sys,/silent
+;plotsym,0,2,/fill
+;plots,0,0,ps=8,color=!orange
+;oplot,[1,1],[this_earthlon,this_earthlon]*!dtor,ps=8,color=!blue,/polar
+
+;Test array bounds
+;pmm,(sw[*,1])[where(sw[*,0]/au_km gt 0 and sw[*,0]/au_km lt 1.5)]
+;pmm,(sc_arr[1,*])[where(sw[*,0]/au_km gt 0 and sw[*,0]/au_km lt 1.5)]
+;pmm,(sw_theta_shift(sc_arr[1,*], /n180to180))[where(sw[*,0]/au_km gt 0 and sw[*,0]/au_km lt 1.5)]
+;wlt1p5au=where(sw[*,0]/au_km gt 0 and sw[*,0]/au_km lt 1.5)
+
+;!!!CAUSES ERROR - (WRONG)
+;Crop array to only include the theta range for the given SC
+;		winthetarng=where(sw_theta_shift(sw[*,1,i]-this_earthlon, /n180to180) ge thetarange[0,j] and sw_theta_shift(sw[*,1,i]-this_earthlon, /n180to180) le thetarange[1,j])
+;		sw=sw[winthetarng,*,i]
+;Update number of elements variable
+;		nblob=n_elements(sw[*,1,i])
 		
+;Test spiral
+;sw1=sw[winthetarng,*,i]
+;plot,sw1[*,0]/au_km>0,sw1[*,1]*!dtor,/polar,ps=4,xrange=[-1.5,1.5],yrange=[-1.5,1.5],chars=2,/iso,xmargin=[5,1],ymargin=[5,1],xtit=anytim(thistime,/vms,/date)+' [AU]'
+;wltau=where(sw1[*,0]/au_km gt 0 and sw1[*,0]/au_km lt 1.5)
+;tspirals=sw_spiral(sw1[554,*,i],const=constants_arr, theta_range=thetarange[*,j], nparam=nspiralprop)
+;oplot,tspirals[*,0]/au_km,tspirals[*,1]*!dtor,/polar,ps=4,color=!red
+;oplot,[0,1],([thetarange[0,j],thetarange[0,j]]+this_earthlon)*!dtor,lines=2,/polar
+;oplot,[0,2],([thetarange[1,j],thetarange[1,j]]+this_earthlon)*!dtor,lines=2,/polar
+;plots,0,0,ps=8,color=!orange
+;oplot,[1,1],[this_earthlon,this_earthlon]*!dtor,ps=8,color=!blue,/polar
+
 ;Calculate spirals for each blob
-		spirals=sw_spiral(sw[*,*,i],const=constants_arr, theta_range=thetarange[*,j])
+ 		spirals=sw_spiral(sw[*,*,i],const=constants_arr, theta_range=thetarange[*,j], nparam=nspiralprop, earthlon=this_earthlon, no_alpha=no_alpha)
 		if n_elements(spirals) gt 1. then spiral_arrays=[spiral_arrays,spirals]
 		
 ;Get rid of meaningless data  (R < R_sun)
@@ -504,6 +599,8 @@ if not keyword_set(plot_points) then goto,skip_plot_points
 
 skip_plot_points:
 
+skip_instrument:
+
 	endfor	
 
 	if not keyword_set(test) then if keyword_set(plot_points) then window_capture,file=plotp+'frame_'+time2file(anytim(thistime,/vms)),/png
@@ -516,9 +613,12 @@ skip_plot_points:
 		;sw_arrays[*,1]=sw_theta_shift(sw_arrays[*,1])
 		mapstack=sw_interp(sw_arrays,thistime,/heliocentric,plot_interp=plot_interp,save_maps=save_maps,constants=constants_arr) ;,/cylindrical
 	endif
-
-	if not keyword_set(test) then save,sw_arrays,file=sw_paths(/sav)+'sw_properties_points_'+time2file(anytim(thistime,/vms))+'.sav'
-
+	
+	if not keyword_set(test) then begin
+		thisfsav=savpath+'sw_properties_points_'+time2file(anytim(thistime,/vms))+'_'+filetag+'.sav'
+		save,sw_arrays,file=thisfsav,/compress
+		fsavlist=[fsavlist,thisfsav]
+	endif
 
 	if keyword_set(test) then begin
 		blah=''
@@ -527,5 +627,6 @@ skip_plot_points:
 
 endfor
 
+if n_elements(fsavlist) gt 1 then fsavlist=fsavlist[1:*]
 
 end

@@ -20,39 +20,41 @@ if keyword_set(plot_data) then begin
 	!p.color=0
 	!p.background=255
 	setcolors,/sys,/sile,/quie
-	!p.multi=[0,2,3]
+	;!p.multi=[0,2,3]
+	!p.multi=[0,2,2]
+	charsz=1.4
 ;velocity
-	utplot,sw_omni[6,*]-anytim(time),sw_omni[2,*],anytim(time,/vms),ytit='Velocity', chars=2
+	utplot,sw_omni[6,*]-anytim(time),sw_omni[2,*],anytim(time,/vms),ytit='Velocity', chars=charsz
 	vline,trange-anytim(time),lines=2,color=!red
 ;density
-	utplot,sw_omni[6,*]-anytim(time),sw_omni[3,*],anytim(time,/vms),ytit='Density', chars=2
+	utplot,sw_omni[6,*]-anytim(time),sw_omni[3,*],anytim(time,/vms),ytit='Density', chars=charsz
 	vline,trange-anytim(time),lines=2,color=!red
-;magnetic field
-	utplot,sw_omni[6,*]-anytim(time),sw_omni[7,*],anytim(time,/vms),ytit='Magnetic Field R(bk)-T(rd)-N(bl)', chars=2
-	oplot,sw_omni[6,*]-anytim(time),sw_omni[8,*],color=!red
-	oplot,sw_omni[6,*]-anytim(time),sw_omni[9,*],color=!blue
-	vline,trange-anytim(time),lines=2,color=!red
-;inclination is it asin or acos????
-	smth=11 & brad=smooth(sw_omni[7,*],smth) & btan=smooth(sw_omni[8,*],smth)
-	utplot,sw_omni[6,*]-anytim(time),asin(btan/((brad)^2.+(btan)^2.))/!dtor,anytim(time,/vms),ytit='Inclination (data=bk, model=rd)', chars=2,ps=4
-	model_spiral_inclination,inclinations,velocity=sw_omni[2,*]
-	oplot,sw_omni[6,*]-anytim(time),inclinations,color=!red,ps=4
-	vline,trange-anytim(time),lines=2,color=!red
+;;magnetic field
+;	utplot,sw_omni[6,*]-anytim(time),sw_omni[7,*],anytim(time,/vms),ytit='Magnetic Field R(bk)-T(rd)-N(bl)', chars=charsz
+;	oplot,sw_omni[6,*]-anytim(time),sw_omni[8,*],color=!red
+;	oplot,sw_omni[6,*]-anytim(time),sw_omni[9,*],color=!blue
+;	vline,trange-anytim(time),lines=2,color=!red
+;;inclination is it asin or acos????
+;	smth=11 & brad=smooth(sw_omni[7,*],smth) & btan=smooth(sw_omni[8,*],smth)
+;	utplot,sw_omni[6,*]-anytim(time),asin(btan/((brad)^2.+(btan)^2.))/!dtor,anytim(time,/vms),ytit='Inclination (data=bk, model=rd)', chars=charsz,ps=4
+;	model_spiral_inclination,inclinations,velocity=sw_omni[2,*]
+;	oplot,sw_omni[6,*]-anytim(time),inclinations,color=!red,ps=4
+;	vline,trange-anytim(time),lines=2,color=!red
 
-	utplot,sw_geo[0,*]-anytim(time),sw_geo[1,*],anytim(time,/vms), ytit='Kp', chars=2
+	utplot,sw_geo[0,*]-anytim(time),sw_geo[1,*],anytim(time,/vms), ytit='Kp', chars=charsz
 	vline,trange-anytim(time),lines=2,color=!red
-	utplot,sw_geo[0,*]-anytim(time),sw_geo[2,*],anytim(time,/vms), ytit='DST', chars=2,yran=[-30,30],/ysty
+	utplot,sw_geo[0,*]-anytim(time),sw_geo[2,*],anytim(time,/vms), ytit='DST', chars=charsz,yran=[-30,30],/ysty
 ;over plot radial field
 	oplot,sw_geo[0,*]-anytim(time),sw_omni[7,*]*3.,color=!red
 	axis,yaxis=1,color=!red, ytit='B radial',yran=[-10,10]
 	hline,0,lines=2
 	vline,trange-anytim(time),lines=2,color=!red
-;	utplot,sw_geo[0,*]-anytim(time),sw_geo[4,*],anytim(time,/vms), ytit='Auroral Electrojet', chars=2
+;	utplot,sw_geo[0,*]-anytim(time),sw_geo[4,*],anytim(time,/vms), ytit='Auroral Electrojet', chars=charsz
 ;	oplot,sw_geo[0,*]-anytim(time),sw_geo[3,*],color=!gray,lines=1
 ;	oplot,sw_geo[0,*]-anytim(time),sw_geo[5,*],color=!gray,lines=2
 ;	oplot,sw_geo[0,*]-anytim(time),sw_geo[6,*],color=!gray,lines=3
 ;	vline,trange-anytim(time),lines=2,color=!red
-;	utplot,sw_geo[0,*]-anytim(time),sw_geo[7,*],anytim(time,/vms), ytit='Polar Cap (Thule St.)', chars=2
+;	utplot,sw_geo[0,*]-anytim(time),sw_geo[7,*],anytim(time,/vms), ytit='Polar Cap (Thule St.)', chars=charsz
 	!p.multi=0
 
 ;!!!want to plot dst or ae between each hemisphere!! does (-) CH give activity in one hemisphere, and (+) in the other???
@@ -228,37 +230,6 @@ if keyword_set(plot_spiral) then begin
 	oplot,[0,x_earth1],[0,y_earth1],color=!gray,lines=2
 endif
 
-end
-
-;-------------------------------------------------------------------------->
-pro make_spiral, rfootarr, thetafootarr, footpos_x, footpos_y, $
-	foot=infootpoint, earthlon=inearthlon, velocity=inchvelocity, $
-	bin=inbin, constants=constants_arr
-
-if n_elements(inbin) lt 1 then bin=.1 else bin=inbin
-footpoint=infootpoint
-earthlon=inearthlon
-chvelocity=inchvelocity
-
-constants_arr=sw_constants()
-alpha_b=constants_arr[0]
-alpha_rho=constants_arr[1]
-alpha_t=constants_arr[2]
-au_km=constants_arr[3]
-vernal_equinox=constants_arr[4]
-nan=constants_arr[5]
-r_sun=constants_arr[6]
-omegasun=constants_arr[7]
-omegaearth=constants_arr[8]
-
-	thetafootarr=footpoint+earthlon+(-findgen(360./float(bin))*float(bin))
-	
-	;delta R = R(blob) - delta theta (velocity(blob) / omega_sun)
-	rfootarr=abs((thetafootarr-thetafootarr[0])/omegasun*chvelocity)
-	thetafootarr=sw_theta_shift(thetafootarr)
-	
-	;theta = theta(blob) + delta theta
-	polrec, rfootarr, thetafootarr, footpos_x, footpos_y, /degrees
 end
 
 ;-------------------------------------------------------------------------->
