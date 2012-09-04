@@ -3,7 +3,7 @@
 pro sw_plot_points, time, array, file=infile, velocityplot=velocityplot, densityplot=densityplot, $
 	temperatureplot=temperatureplot, magneticfieldplot=magneticfieldplot, radialfieldplot=radialfieldplot, planets=planets, $
 	footpoints=footpoints, chvelocity=inchvelocity, save_plot=save_plot, nowindow=nowindow, $
-	title_string=title_string, no_alpha=no_alpha, cbarpos=cbarpos, nocolarbar=nocolarbar, dops=dops, pmulti=pmulti, no_stereo=no_stereo, $;,multiplot=multiplot
+	title_string=title_string, no_alpha=no_alpha, cbarpos=cbarpos, nocolorbar=nocolarbar, dops=dops, pmulti=pmulti, no_stereo=no_stereo, $;,multiplot=multiplot
 	savpath=insavpath, outearthpos=outearthpos, nodata=nodata, label_planet=label_planet, $
 	fontcode=fontcode, no_plot_sc=no_plot_sc, inspiralarr=inarray, outarr=spirals, notitle=notitle, _extra=_extra
 
@@ -31,12 +31,14 @@ r_sun=6.955d5
 omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes (-10 -> +10)
 constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
 
+;stop
+
 ;if keyword_set(nodata) then goto,skip_get_data
 ;list save files and find nearest to TIME
 plotp=sw_paths(/plotinterpheliop)
 if n_elements(array) gt 1 then spirals=array else begin
 	
-	if n_elements(infiles) gt 0 then begin
+	if n_elements(infile) gt 0 then begin
 		swff=infile[0]
 		timff=anytim(file2time(swff))
 		thistime=timff
@@ -137,7 +139,7 @@ endif
 cbthick=2
 if not keyword_set(nodata) and not keyword_set(nocolarbar) then begin
 case propnum of 
-	2: color_table, velrange,cbarpos[[0,2]],cbarpos[[1,3]],title='Velocity [Km/s]',shadowtext=shadowtext;,/shadow
+	2: color_table, velrange,cbarpos[[0,2]],cbarpos[[1,3]],title='Velocity [km s'+textoidl('^{-1}')+']',shadowtext=shadowtext;,/shadow
 	3: color_table, densrange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG n [cm'+textoidl('^{-3}')+']',shadowtext=shadowtext;,/shadow
 	4: color_table, temprange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG T [K]',shadowtext=shadowtext;,/shadow
 	5: color_table, brange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG |B| [nT]',shadowtext=shadowtext;,/shadow
