@@ -1,4 +1,20 @@
 ;----------------------------------------------------------------------------->
+;CME_FORECASTER_SIMPLE
+;
+;KEYWORDS:
+;TLINEAR = Make time-steps linear. Otherwise they will become more sparse as R^-4
+;COEFFICIENT = Input coefficient for drag model instead of each variable.
+;
+;TODO: 
+;	- use a 1D array of rho. vs. dist. to speed up the running if we are just using an empirical model that is symmetric in longitude
+;	- change the spacing of points to be very close at small heights from the sun and very far when at far heights from the Sun to match the dynamic spatial scale of the CME propagation
+;
+;HISTORY:
+;	Written - P.A.HIGGINS - 2012-09-12
+;
+;----------------------------------------------------------------------------->
+
+;----------------------------------------------------------------------------->
 ;ETA = Time of arrival for CME to fit to.
 ;TOLERANCE = Time in seconds for closeness of best fit. 
 
@@ -65,16 +81,16 @@ fileruns='~/science/data/cme_propagation/cme_propagate_runs/ireland_transformer_
 ;CHOOSE INPUTS
 ;----------------------------------------------------------------------------->
 ;CME parameters (june 7th event)
-cmetim=anytim('4-aug-2011 03:41:00.000') ;'7-jun-2011 06:50:00.000'
-cmelon=36. ;54. ;in degrees
-cmevel=1000. ;1100. ;in km/s
-cmewidth=60. ;in degrees
-cme_mass=1d12 & txtmass='11' ;in Kg
-cme_height=15. ;in R Sun
+cmetim=anytim('7-jun-2011 08:23:00.000') ;anytim('4-aug-2011 03:41:00.000') ;'7-jun-2011 06:50:00.000'
+cmelon=53. ;36. ;54. ;in degrees
+cmevel=1450. ;1000. ;1100. ;in km/s
+cmewidth=110. ;in degrees
+cme_mass=1d11 & txtmass='11' ;in Kg
+cme_height=16. ;in R Sun
 dragcoeff=1.
 
 ;Solar wind parameters
-velwind=500.
+velwind=450.
 rhowind=5.
 ;----------------------------------------------------------------------------->
 
@@ -92,7 +108,7 @@ nan=0/0.
 r_sun=6.955d5 ;km
 l1_km=au_km-au_km*.01
 mass_h_kg=1.672622d-27 ;mass of hydrogen in kilograms
-mass_cme_kg=1d11 ;mass of CME in kilograms
+;mass_cme_kg=1d11 ;mass of CME in kilograms
 cmcub_p_kmcub=(1d5/1d)^3. ;cm cubed per km cubed
 omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes (-10 -> +10)
 ;----------------------------------------------------------------------------->
