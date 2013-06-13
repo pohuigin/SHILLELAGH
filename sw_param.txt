@@ -1,0 +1,11 @@
+#The comment character is '#' and the delimiter character is ';'.
+#SHILLELAgh Solar Wind Propagation Parameters (from ... et al. ...)
+#
+#Parameter; Value; Type; Comment
+insitup; sw_prop_insitu/; A; path to (OMNI/STA/B) insitu data files
+plotp; sw_prop_plots/; A; path to output plots
+savep; sw_prop_save/; A; path to output save files
+plotinterpheliop; sw_prop_interp_plots/; A; path to interpolated maps
+cmeplotp; plots/; A; path to CME propagation plots?
+cmeinputdatap; orbits/; A; CME input data?
+chforecast; ch_forecast/; A; coronal hole forecasting?
