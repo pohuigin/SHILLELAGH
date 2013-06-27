@@ -3,9 +3,9 @@
 pro sw_plot_points, time, array, file=infile, velocityplot=velocityplot, densityplot=densityplot, $
 	temperatureplot=temperatureplot, magneticfieldplot=magneticfieldplot, radialfieldplot=radialfieldplot, planets=planets, $
 	footpoints=footpoints, chvelocity=inchvelocity, save_plot=save_plot, nowindow=nowindow, $
-	title_string=title_string, no_alpha=no_alpha, cbarpos=cbarpos, nocolorbar=nocolarbar, dops=dops, pmulti=pmulti, no_stereo=no_stereo, $;,multiplot=multiplot
+	title_string=title_string, no_alpha=no_alpha, setct=setct, cbarpos=cbarpos, nocolorbar=nocolarbar, docolorbar=docolorbar, dops=dops, pmulti=pmulti, no_stereo=no_stereo, $;,multiplot=multiplot
 	savpath=insavpath, outearthpos=outearthpos, nodata=nodata, label_planet=label_planet, $
-	fontcode=fontcode, no_plot_sc=no_plot_sc, inspiralarr=inarray, outarr=spirals, notitle=notitle, _extra=_extra
+	fontcode=fontcode, no_plot_sc=no_plot_sc, inspiralarr=inarray, outarr=spirals, notitle=notitle, _extra=_extra, over=over, outstapos=outstapos, outstbpos=outstbpos
 
 if n_elements(inarray) gt 0 then array=inarray
 
@@ -74,13 +74,18 @@ if not keyword_set(nowindow) then window,xs=wxs,ys=wys
 setcolors,/sys,/sil,/qui
 if n_elements(pmulti) gt 0 then !p.multi=pmulti
 if keyword_set(notitle) then titlestr=' ' else titlestr=strmid(anytim(thistime,/vms),0,17)+' '+title_string
-plot,/polar,spirals[*,0],spirals[*,1]*!dtor,ps=3,xr=[2.*au_km,-2.*au_km]*1.2,yr=[2.*au_km,-2.*au_km]*1.2,/iso,title=fontcode+titlestr,/nodata,chars=1.4, $
+
+if not keyword_set(over) then begin
+	plot,/polar,spirals[*,0],spirals[*,1]*!dtor,ps=3,xr=[2.*au_km,-2.*au_km]*1.2,yr=[2.*au_km,-2.*au_km]*1.2,/iso,title=fontcode+titlestr,/nodata,chars=1.4, $
 	_extra=_extra
+endif
 
 ;Set up color dot plots
 loadct,5,/silent
-if keyword_set(radialfieldplot) then loadct,33,/silent
+if keyword_set(radialfieldplot) then loadct,17,/silent
 ;loadct,0,/silent
+if keyword_set(setct) then loadct,setct,/silent
+
 plotsym,0,1,/fill
 
 if keyword_set(magneticfieldplot) then begin & brange=[0.,3.01] & propnum=5 & endif; then brange=[0.,15.]
@@ -137,7 +142,7 @@ endif
 ;stop
 
 cbthick=2
-if not keyword_set(nodata) and not keyword_set(nocolarbar) then begin
+if not keyword_set(nodata) and not keyword_set(nocolarbar) or keyword_set(docolorbar) then begin
 case propnum of 
 	2: color_table, velrange,cbarpos[[0,2]],cbarpos[[1,3]],title='Velocity [km s'+textoidl('^{-1}')+']',shadowtext=shadowtext;,/shadow
 	3: color_table, densrange,cbarpos[[0,2]],cbarpos[[1,3]],title='LOG n [cm'+textoidl('^{-3}')+']',shadowtext=shadowtext;,/shadow
@@ -148,6 +153,7 @@ endcase
 endif
 
 if n_elements(pmulti) gt 0 then !p.multi=pmulti
+loadct,0,/silent
 setcolors,/sys,/silent
 plot,/polar,spirals[*,0],spirals[*,1]*!dtor,/nodata,/noerase,xr=[2.*au_km,-2.*au_km]*1.2,yr=[2.*au_km,-2.*au_km]*1.2,/iso,chars=1.4, $
 	_extra=_extra
@@ -193,6 +199,7 @@ oplot,/polar,[0,0]*au_km,[0,0],ps=8,color=0
 if keyword_set(no_plot_sc) then goto,skip_stereo
 ;Plot Stereo B
 stb_pos=GET_STEREO_LONLAT( anytim(thistime,/vms), 'B', system = 'HCI', /degrees )
+outstbpos=stb_pos
 ;wbest2=where(min(abs(sc_arr[6,*]-thistime)) eq abs(sc_arr[6,*]-thistime))
 plotsym,0,1.5,/fill
 oplot,/polar,[stb_pos[0],stb_pos[0]],[stb_pos[1],stb_pos[1]]*!dtor,ps=8,color=0
@@ -204,6 +211,7 @@ oplot,/polar,[0,stb_pos[0]],[0,stb_pos[1]]*!dtor,lines=2,color=!blue
 ;plotsym,0,2,/fill & oplot,/polar,[sc_arr[0,wbest2],sc_arr[0,wbest2]],[sc_arr[1,wbest2],sc_arr[1,wbest2]]*!dtor,ps=8,color=!black
 ;Plot Stereo A
 sta_pos=GET_STEREO_LONLAT( anytim(thistime,/vms), 'A', system = 'HCI', /degrees )
+outstapos=sta_pos
 ;wbesta=where(min(abs(sc_arr[6,*]-thistime)) eq abs(sc_arr[6,*]-thistime))
 plotsym,0,1.5,/fill
 oplot,/polar,[sta_pos[0],sta_pos[0]],[sta_pos[1],sta_pos[1]]*!dtor,ps=8,color=0

@@ -198,7 +198,7 @@ omegasun=constants_arr[7]
 
 if n_elements(inthetarange) lt 1 then thetarange=[-22.,22.] else thetarange=inthetarange
 if n_elements(inthetabin) lt 1 then thetabin=1. else thetabin=inthetabin
-if n_elements(inrrange) lt 1 then rrange=[-3.5*au_km,10.*au_km] else rrange=inrrange
+if n_elements(inrrange) lt 1 then rrange=[-5.5*au_km,10.*au_km] else rrange=inrrange
 
 ;stop
 
@@ -340,20 +340,34 @@ if keyword_set(plot_points) then window,xs=750,ys=750
 
 plotp=sw_paths(/plotp) ;'~/science/procedures/cme_propagation/sw_prop_movie/'
 
-;SW Properties fall off as 1/r^alpha
-alpha_b=2.5d ;between 2 and 3
-alpha_rho=4.d ;!!!NOT USED: switched to using empirical model in Chen 1996 (Eqn. 17.)
-alpha_t=1.d
-if keyword_set(no_alpha) then begin & alpha_b=0d & alpha_rho=0d & alpha_t=0d & endif
 
 ;Physical Constants
-au_km=149.6d6 ;1 AU in kilometers
-vernal_equinox = -77d ; the longitude of Capella (Aries?) in degrees or solar ascending node?? 
-nan=0/0.
-r_sun=6.955d5 ;km
-omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of latitudes (-10 -> +10)
+;;constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
+;constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun,omegaearth]
+constants_arr=sw_constants()
 
-constants_arr=[alpha_b,alpha_rho,alpha_t,au_km,vernal_equinox,nan,r_sun,omegasun]
+au_km=constants_arr[3]
+vernal_equinox=constants_arr[4]
+nan=constants_arr[5]
+r_sun=constants_arr[6]
+omegasun=constants_arr[7]
+omegaearth=constants_arr[8]
+;au_km=149.6d6 ;1 AU in kilometers
+;vernal_equinox = -77d ; the longitude of Capella (Aries?) in degrees or solar ascending node?? 
+;nan=0/0.
+;r_sun=6.955d5 ;km
+;omegasun=360d/(25.2d*3600d*24d) ;in degrees/second from diff. rot. of
+;latitudes (-10 -> +10)
+
+;SW Properties fall off as 1/r^alpha
+;alpha_b=2.5d ;between 2 and 3
+;alpha_rho=4.d ;!!!NOT USED: switched to using empirical model in Chen 1996 (Eqn. 17.)
+;alpha_t=1.d
+alpha_b=constants_arr[0]
+alpha_rho=constants_arr[1]
+alpha_t=constants_arr[2]
+if keyword_set(no_alpha) then begin & alpha_b=0d & alpha_rho=0d & alpha_t=0d & endif
+
 
 if n_elements(trange) eq 1 then begin 
 	time_arr=time
@@ -465,7 +479,7 @@ for i=0l,ntime-1l do begin
 ;Fill temperature
 		sw[*,4,i]=sc_arr[4,*]
 		
-;Calculate radii
+;Calculate radii (assuming ballistic/constant velocity/constant trajectory propagation?)
 		sw[*,0,i]=sc_arr[0,*]-(sc_arr[6,*]-thistime)*sc_arr[2,*]
 
 ;Assume 1/R^alpha dependence of Solar Wind properties

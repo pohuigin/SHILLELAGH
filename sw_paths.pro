@@ -23,7 +23,7 @@
 ;
 ;-------------------------------------------------------------------------->
 
-function sw_paths, allparam=allparam, rootp=rootp, paramf=paramf, verbose=verbose, $
+function sw_paths, allparam=allparam, rootp=rootp, paramf=paramf, meta=outmeta, verbose=verbose, $
 	insitup=insitup, plotp=plotp, savep=savep, plotinterpheliop=plotinterpheliop, $
 	cmeplotp=cmeplotp, cmeinputdatap=cmeinputdatap, chforecast=chforecast
 
@@ -45,24 +45,7 @@ if not syspath then fparam=root+'sw_param.txt' $
 if verbose then print,'% SW_PATHS: Pointing to: ROOT = '+!SHILLELAGH_PATH
 if verbose then print,'% SW_PATHS: Pointing to: PARAM = '+!SHILLELAGH_PARAM
 
-;Read parameters from meta data file
-readcol, fparam, param, val, type, meta, comment='#', format='A,A,A,A', delim=';',/silent
-param=strtrim(param,2)
-val=strtrim(val,2)
-type=strtrim(type,2)
-meta=strtrim(meta,2)
-
-;Make array of data types for each field in structure
-dataspec=strjoin(type,',')
-
-;Create empty structure
-create_struct, paramstruct, '', param, dataspec
-
-;Fill the structure
-for i=0,n_elements(param)-1 do paramstruct.(i)=val[i]
-
-;Output the description of each parameter
-outmeta=[[param],[meta]]
+paramstruct=read_param_file(fparam, meta=outmeta)
 
 result=1
 if keyword_set(rootp) then result=root
