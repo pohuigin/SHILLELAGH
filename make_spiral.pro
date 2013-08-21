@@ -1,8 +1,8 @@
 ;-------------------------------------------------------------------------->
 
 pro make_spiral, rfootarr, thetafootarr, footpos_x, footpos_y, $
-	foot=infootpoint, earthlon=inearthlon, velocity=inchvelocity, $
-	bin=inbin, constants=constants_arr
+	foot=infootpoint, rfootpoint=rfootpoint, earthlon=inearthlon, velocity=inchvelocity, $
+	bin=inbin, constants=constants_arr, notfoot=notfoot
 
 if n_elements(inbin) lt 1 then bin=.1 else bin=inbin
 footpoint=infootpoint
@@ -20,14 +20,29 @@ r_sun=constants_arr[6]
 omegasun=constants_arr[7]
 omegaearth=constants_arr[8]
 
-	thetafootarr=footpoint+earthlon+(-findgen(360./float(bin))*float(bin))
+if keyword_set(notfoot) then begin
+   thetafootarr=findgen(720)-360.
 
-	;delta R = R(blob) - delta theta (velocity(blob) / omega_sun)
-	rfootarr=abs((thetafootarr-thetafootarr[0])/omegasun*chvelocity)
-	thetafootarr=sw_theta_shift(thetafootarr)
-	
-	;theta = theta(blob) + delta theta
-	polrec, rfootarr, thetafootarr, footpos_x, footpos_y, /degrees
+   rfootarr = rfootpoint-( chvelocity / omegasun ) * (thetafootarr-footpoint)
+   wgt0=where(rfootarr gt 0)
+   if wgt0[0] eq -1 then begin
+      print,'SPIRAL MESSED UP. all radial points < 0'
+      rfootarr=fltarr(720)
+      return
+   endif
+   
+   thetafootarr=thetafootarr[wgt0]
+   rfootarr=rfootarr[wgt0]
+endif else begin
+   thetafootarr=footpoint+earthlon+(-findgen(360./float(bin))*float(bin))
+
+   ;delta R = R(blob) - delta theta (velocity(blob) / omega_sun)
+   rfootarr=abs((thetafootarr-thetafootarr[0])/omegasun*chvelocity)
+endelse
+
+thetafootarr=sw_theta_shift(thetafootarr)
+;theta = theta(blob) + delta theta
+
+polrec, rfootarr, thetafootarr, footpos_x, footpos_y, /degrees
+
 end
-
-;-------------------------------------------------------------------------->

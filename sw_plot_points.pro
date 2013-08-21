@@ -161,7 +161,7 @@ plot,/polar,spirals[*,0],spirals[*,1]*!dtor,/nodata,/noerase,xr=[2.*au_km,-2.*au
 ;Over plot selected spirals 
 if n_elements(footpoints) gt 0 then begin
 
-stop
+;stop
 
 	setcolors,/sys,/quiet,/silent
 	if n_elements(inchvelocity) lt 1 then chvelocity=fltarr(n_elements(footpoints))+700. else chvelocity=inchvelocity
